@@ -28,7 +28,7 @@
 	soc {
 		#address-cells = <1>;
 		#size-cells = <1>;
-		compatible = "microsemi,miv-soc", "simple-bus";
+		compatible = "gigadevice,gd32vf103-soc", "simple-bus";
 		ranges;
 
 		flash0: flash@80000000 {
@@ -36,9 +36,9 @@
 			reg = <0x80000000 0x40000>;
 		};
 
-		sram0: memory@80040000 {
+		sram0: memory@20000000 {
 			compatible = "mmio-sram";
-			reg = <0x80040000 0x40000>;
+			reg = <0x20000000 0x40000>;
 		};
 /*
 		plic: interrupt-controller@40000000 {
