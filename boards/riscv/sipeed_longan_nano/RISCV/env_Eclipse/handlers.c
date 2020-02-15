@@ -1,3 +1,4 @@
+#if 0
 //See LICENSE for license details.
 #include <stdint.h>
 #include <stdio.h>
@@ -29,4 +30,4 @@ __attribute__((weak)) uintptr_t handle_trap(uintptr_t mcause, uintptr_t sp)
 
 
 
-
+#endif

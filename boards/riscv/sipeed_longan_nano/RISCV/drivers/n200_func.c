@@ -1,3 +1,4 @@
+#if 0
 // See LICENSE for license details.
 #include <gd32vf103.h>
 #include <stdio.h>
@@ -395,4 +396,4 @@ void eclic_set_negedge_trig(uint32_t source) {
 //}
 
 
-
+#endif

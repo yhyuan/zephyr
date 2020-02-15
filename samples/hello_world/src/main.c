@@ -1,3 +1,4 @@
+#if 0
 /*
  * Copyright (c) 2012-2014 Wind River Systems, Inc.
  *
@@ -11,3 +12,4 @@ void main(void)
 {
 	printk("Hello World! %s\n", CONFIG_BOARD);
 }
+#endif

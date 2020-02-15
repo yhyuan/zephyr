@@ -1,3 +1,4 @@
+#if 0
 //See LICENSE for license details.
 #include <gd32vf103.h>
 #include <stdint.h>
@@ -32,3 +33,4 @@ void _init()
 void _fini()
 {
 }
+#endif

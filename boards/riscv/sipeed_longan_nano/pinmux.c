@@ -1,3 +1,4 @@
+#if 0
 /*
  * Copyright (c) 2017 Jean-Paul Etienne <fractalclone@gmail.com>
  *
@@ -50,3 +51,4 @@ static int hifive1_pinmux_init(struct device *dev)
 }
 
 SYS_INIT(hifive1_pinmux_init, PRE_KERNEL_1, CONFIG_PINMUX_INIT_PRIORITY);
+#endif
