@@ -214,7 +214,7 @@ endif()
 toolchain_cc_imacros(${AUTOCONF_H})
 
 # @Intent: Set compiler specific flag for bare metal freestanding option
-toolchain_cc_freestanding()
+#toolchain_cc_freestanding()
 
 # @Intent: Set compiler specific flag for tentative definitions, no-common
 toolchain_cc_nocommon()
@@ -293,10 +293,10 @@ toolchain_cc_warning_error_implicit_int()
 # 'cmake -DEXTRA_CFLAGS="-Werror -Wno-deprecated-declarations" ..'
 include(cmake/extra_flags.cmake)
 
-zephyr_cc_option(-fno-asynchronous-unwind-tables)
-zephyr_cc_option(-fno-pie)
-zephyr_cc_option(-fno-pic)
-zephyr_cc_option(-fno-strict-overflow)
+#zephyr_cc_option(-fno-asynchronous-unwind-tables)
+#zephyr_cc_option(-fno-pie)
+#zephyr_cc_option(-fno-pic)
+#zephyr_cc_option(-fno-strict-overflow)
 
 if(CONFIG_OVERRIDE_FRAME_POINTER_DEFAULT)
   if(CONFIG_OMIT_FRAME_POINTER)
@@ -313,10 +313,10 @@ zephyr_compile_options(${COMPILER_OPT_AS_LIST})
 
 if(NOT CMAKE_C_COMPILER_ID STREQUAL "Clang")
   # GCC assumed
-  zephyr_cc_option(-fno-reorder-functions)
+  #zephyr_cc_option(-fno-reorder-functions)
 
   if(NOT ${ZEPHYR_TOOLCHAIN_VARIANT} STREQUAL "xcc")
-    zephyr_cc_option(-fno-defer-pop)
+	  #zephyr_cc_option(-fno-defer-pop)
   endif()
 endif()
 
@@ -1537,4 +1537,4 @@ endif()
 # @Intent: Set compiler specific flags for standard C includes
 # Done at the very end, so any other system includes which may
 # be added by Zephyr components were first in list.
-toolchain_cc_nostdinc()
+#toolchain_cc_nostdinc()
