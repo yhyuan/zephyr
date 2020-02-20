@@ -40,7 +40,7 @@ MEMORY
     IDT_LIST  (wx)      : ORIGIN = 0xFFFFF7FF, LENGTH = 2K
 }
 
-ENTRY( _start )
+ENTRY(CONFIG_KERNEL_ENTRY)
 
 SECTIONS
     {
