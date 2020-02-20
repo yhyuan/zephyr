@@ -6,8 +6,37 @@
 #include "riscv_encoding.h"
 #include "n200_func.h"
 #include <init.h>
+  
+void eclic_init ( uint32_t num_irq )
+{
 
-extern uint32_t disable_mcycle_minstret();
+  typedef volatile uint32_t vuint32_t;
+
+  //clear cfg register 
+  *(volatile uint8_t*)(ECLIC_ADDR_BASE+ECLIC_CFG_OFFSET)=0;
+
+  //clear minthresh register 
+  *(volatile uint8_t*)(ECLIC_ADDR_BASE+ECLIC_MTH_OFFSET)=0;
+
+  //clear all IP/IE/ATTR/CTRL bits for all interrupt sources
+  vuint32_t * ptr;
+
+  vuint32_t * base = (vuint32_t*)(ECLIC_ADDR_BASE + ECLIC_INT_IP_OFFSET);
+  vuint32_t * upper = (vuint32_t*)(base + num_irq*4);
+
+  for (ptr = base; ptr < upper; ptr=ptr+4){
+    *ptr = 0;
+  }
+}
+
+void eclic_mode_enable() {
+  uint32_t mtvec_value = read_csr(mtvec);
+  mtvec_value = mtvec_value & 0xFFFFFFC0;
+  mtvec_value = mtvec_value | 0x00000003;
+  write_csr(mtvec,mtvec_value);
+}
+
+
 static int _init(struct device* dev)
 {
 	ARG_UNUSED(dev);

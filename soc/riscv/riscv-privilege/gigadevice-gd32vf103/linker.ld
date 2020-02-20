@@ -64,11 +64,6 @@ SECTIONS
     GROUP_START(ROMABLE_REGION)
     _image_rom_start = .;
 
-  .init           :
-  {
-    KEEP (*(SORT_NONE(.init)))
-  } >ROM
-
     SECTION_PROLOGUE(_VECTOR_SECTION_NAME,,)
     {
 		. = ALIGN(4);
@@ -131,18 +126,6 @@ SECTIONS
 
     GROUP_START(RAMABLE_REGION)
 
-  .lalign         :
-  {
-    . = ALIGN(4);
-    PROVIDE( _data_lma = . );
-  } >ROM AT>ROM
-
-  .dalign         :
-  {
-    . = ALIGN(4);
-    PROVIDE( _data = . );
-  } >RAM AT>ROM
-  
     SECTION_DATA_PROLOGUE(_DATA_SECTION_NAME,,)
 	{
 		 . = ALIGN(4);
@@ -151,9 +134,6 @@ SECTIONS
 
 		 *(.data)
 		 *(".data.*")
-
-    . = ALIGN(8);
-    PROVIDE( __global_pointer$ = . + 0x800); 
 
 		 *(.sdata .sdata.* .gnu.linkonce.s.*)
 		 *(.sdata2 .sdata2.* .gnu.linkonce.s2.*)
@@ -175,10 +155,6 @@ SECTIONS
  */
 #include <snippets-ram-sections.ld>
     __data_ram_end = .;
-
-  . = ALIGN(4);
-  PROVIDE( _edata = . );
-  PROVIDE( edata = . );
 
     SECTION_DATA_PROLOGUE(_BSS_SECTION_NAME,(NOLOAD),)
 	{
@@ -218,15 +194,6 @@ SECTIONS
 #endif
 
 	} GROUP_LINK_IN(RAMABLE_REGION)
-
-  __stack_size = DEFINED(__stack_size) ? __stack_size : 1K;
-
-  .stack ORIGIN(RAM) + LENGTH(RAM) - __stack_size :
-  {
-    /*PROVIDE( _heap_end = . ); */
-    . = __stack_size;  
-    PROVIDE( _sp = . ); 
-  } >RAM AT>RAM
 
 #include <linker/cplusplus-ram.ld>
 

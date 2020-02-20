@@ -35,6 +35,27 @@ OF SUCH DAMAGE.
 #include "gd32vf103.h"
 #include "systick.h"
 
+uint32_t mtime_lo(void)
+{
+  return *(volatile uint32_t *)(TIMER_CTRL_ADDR + TIMER_MTIME);
+}
+
+
+uint32_t mtime_hi(void)
+{
+  return *(volatile uint32_t *)(TIMER_CTRL_ADDR + TIMER_MTIME + 4);
+}
+
+uint64_t get_timer_value()
+{
+  while (1) {
+    uint32_t hi = mtime_hi();
+    uint32_t lo = mtime_lo();
+    if (hi == mtime_hi())
+      return ((uint64_t)hi << 32) | lo;
+  }
+}
+
 /*!
     \brief      delay a time in milliseconds
     \param[in]  count: count in milliseconds
