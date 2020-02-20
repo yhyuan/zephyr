@@ -31,7 +31,7 @@
 		compatible = "gigadevice,gd32vf103-soc", "simple-bus";
 		ranges;
 
-		flash0: flash@80000000 {
+		flash0: flash@8000000 {
 			compatible = "soc-nv-flash";
 			reg = <0x08000000 0x8000>;
 		};
