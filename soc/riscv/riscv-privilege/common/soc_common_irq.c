@@ -11,34 +11,9 @@
  */
 #include <irq.h>
 
-/**
- * @brief Get an IRQ's level
- * @param irq The IRQ number in the Zephyr irq.h numbering system
- * @return IRQ level, either 1 or 2
- */
-static inline unsigned int _irq_level(unsigned int irq)
-{
-	return ((irq >> 8) & 0xff) == 0U ? 1 : 2;
-}
-
-static inline unsigned int _level2_irq(unsigned int irq)
-{
-	return (irq >> 8) - 1;
-}
-
-void arch_irq_enable(unsigned int irq)
+void riscv_irq_enable(unsigned int irq)
 {
 	u32_t mie;
-
-#if defined(CONFIG_RISCV_HAS_PLIC)
-	unsigned int level = _irq_level(irq);
-
-	if (level == 2) {
-		irq = _level2_irq(irq);
-		riscv_plic_irq_enable(irq);
-		return;
-	}
-#endif
 
 	/*
 	 * CSR mie register is updated using atomic instruction csrrs
@@ -49,19 +24,9 @@ void arch_irq_enable(unsigned int irq)
 			  : "r" (1 << irq));
 }
 
-void arch_irq_disable(unsigned int irq)
+void riscv_irq_disable(unsigned int irq)
 {
 	u32_t mie;
-
-#if defined(CONFIG_RISCV_HAS_PLIC)
-	unsigned int level = _irq_level(irq);
-
-	if (level == 2) {
-		irq = _level2_irq(irq);
-		riscv_plic_irq_disable(irq);
-		return;
-	}
-#endif
 
 	/*
 	 * Use atomic instruction csrrc to disable device interrupt in mie CSR.
@@ -72,37 +37,41 @@ void arch_irq_disable(unsigned int irq)
 			  : "r" (1 << irq));
 };
 
-void arch_irq_priority_set(unsigned int irq, unsigned int prio)
+void riscv_irq_priority_set(unsigned int irq, unsigned int prio)
 {
-#if defined(CONFIG_RISCV_HAS_PLIC)
-	unsigned int level = _irq_level(irq);
-
-	if (level == 2) {
-		irq = _level2_irq(irq);
-		riscv_plic_set_priority(irq, prio);
-	}
-#endif
-
 	return ;
 }
 
-int arch_irq_is_enabled(unsigned int irq)
+int riscv_irq_is_enabled(unsigned int irq)
 {
 	u32_t mie;
-
-#if defined(CONFIG_RISCV_HAS_PLIC)
-	unsigned int level = _irq_level(irq);
-
-	if (level == 2) {
-		irq = _level2_irq(irq);
-		return riscv_plic_irq_is_enabled(irq);
-	}
-#endif
 
 	__asm__ volatile ("csrr %0, mie" : "=r" (mie));
 
 	return !!(mie & (1 << irq));
 }
+
+#if !defined(CONFIG_RISCV_HAS_PLIC)
+
+void arch_irq_enable(unsigned int irq)
+{
+	riscv_irq_enable(irq);
+}
+
+void arch_irq_disable(unsigned int irq)
+{
+	riscv_irq_disable(irq);
+}
+void arch_irq_priority_set(unsigned int irq, unsigned int prio)
+{
+	riscv_irq_priority_set(irq, prio);
+}
+int arch_irq_is_enabled(unsigned int irq)
+{
+	return riscv_irq_is_enabled(irq);
+}
+
+#endif
 
 #if defined(CONFIG_RISCV_SOC_INTERRUPT_INIT)
 void soc_interrupt_init(void)
