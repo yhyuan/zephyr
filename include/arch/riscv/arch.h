@@ -88,14 +88,7 @@ int arch_irq_is_enabled(unsigned int irq);
 void arch_irq_priority_set(unsigned int irq, unsigned int prio);
 void z_irq_spurious(void *unused);
 
-#if defined(CONFIG_RISCV_HAS_PLIC)
-#define ARCH_IRQ_CONNECT(irq_p, priority_p, isr_p, isr_param_p, flags_p) \
-({ \
-	Z_ISR_DECLARE(irq_p, 0, isr_p, isr_param_p); \
-	arch_irq_priority_set(irq_p, priority_p); \
-	irq_p; \
-})
-#else
+#if !defined(ARCH_IRQ_CONNECT)
 #define ARCH_IRQ_CONNECT(irq_p, priority_p, isr_p, isr_param_p, flags_p) \
 ({ \
 	Z_ISR_DECLARE(irq_p, 0, isr_p, isr_param_p); \
