@@ -536,7 +536,7 @@ GPIO_DEVICE_INIT_GD32(k, K);
 #endif /* CONFIG_GPIO_GD32_PORTK */
 #endif
 
-static int gpio_gd32_af_init(struct device *device)
+static int gpio_gd32_afio_init(struct device *device)
 {
 	//UNUSED(device);
 
@@ -551,4 +551,4 @@ static int gpio_gd32_af_init(struct device *device)
 	return 0;
 }
 
-DEVICE_INIT(gpio_gd32_af, "", gpio_gd32_af_init, NULL, NULL, PRE_KERNEL_2, 0);
+DEVICE_INIT(gpio_gd32_afio, "", gpio_gd32_afio_init, NULL, NULL, PRE_KERNEL_2, 0);
