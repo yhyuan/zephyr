@@ -293,7 +293,7 @@ static int gpio_gd32_config(struct device *dev, int access_op,
 		goto release_lock;
 	}
 
-	if (gpio_gd32_configure(cfg->port, pin, pincfg, 0) != 0) {
+	if (gpio_gd32_configure((uint32_t)cfg->base, pin, pincfg, 0) != 0) {
 		err = -EIO;
 		goto release_lock;
 	}
@@ -362,9 +362,9 @@ static int gpio_gd32_write(struct device *dev, int access_op,
 
 	pin = gd32_pinval_get(pin);
 	if (value != 0U) {
-		gpio_bit_set(cfg->port, pin);
+		gpio_bit_set((uint32_t)cfg->base, pin);
 	} else {
-		gpio_bit_reset(cfg->port, pin);
+		gpio_bit_reset((uint32_t)cfg->base, pin);
 	}
 
 	return 0;
@@ -382,7 +382,7 @@ static int gpio_gd32_read(struct device *dev, int access_op,
 		return -ENOTSUP;
 	}
 
-	*value = (gpio_input_port_get(cfg->port) >> pin) & 0x1;
+	*value = (gpio_input_port_get((uint32_t)cfg->base) >> pin) & 0x1;
 
 	return 0;
 }
