@@ -92,7 +92,7 @@ static inline u32_t gd32_pinval_get(int pin)
 /**
  * @brief Configure the hardware.
  */
-int gpio_gd32_configure(u32_t port, int pin, int conf, int altf)
+int gpio_gd32_configure(u32_t *base_addr, int pin, int conf, int altf)
 {
 	int pin_ll = gd32_pinval_get(pin);
 
@@ -104,16 +104,16 @@ int gpio_gd32_configure(u32_t port, int pin, int conf, int altf)
 		temp = conf & (GD32_CNF_IN_MASK << GD32_CNF_IN_SHIFT);
 
 		if (temp == GD32_CNF_IN_ANALOG) {
-			gpio_init(port, GPIO_MODE_AIN, 0, pin_ll);
+			gpio_init((uint32_t)base_addr, GPIO_MODE_AIN, 0, pin_ll);
 		} else if (temp == GD32_CNF_IN_FLOAT) {
-			gpio_init(port, GPIO_MODE_IN_FLOATING, 0, pin_ll);
+			gpio_init((uint32_t)base_addr, GPIO_MODE_IN_FLOATING, 0, pin_ll);
 		} else {
 			temp = conf & (GD32_PUPD_MASK << GD32_PUPD_SHIFT);
 
 			if (temp == GD32_PUPD_PULL_UP) {
-				gpio_init(port, GPIO_MODE_IPU, 0, pin_ll);
+				gpio_init((uint32_t)base_addr, GPIO_MODE_IPU, 0, pin_ll);
 			} else {
-				gpio_init(port, GPIO_MODE_IPD, 0, pin_ll);
+				gpio_init((uint32_t)base_addr, GPIO_MODE_IPD, 0, pin_ll);
 			}
 		}
 
@@ -132,16 +132,14 @@ int gpio_gd32_configure(u32_t port, int pin, int conf, int altf)
 		temp = conf & (GD32_CNF_OUT_MASK << GD32_CNF_OUT_SHIFT);
 
 		if (temp == GD32_CNF_AF_PP) {
-			gpio_init(port, GPIO_MODE_AF_PP, max_hz, pin_ll);
+			gpio_init((uint32_t)base_addr, GPIO_MODE_AF_PP, max_hz, pin_ll);
 		} else if (temp == GD32_CNF_AF_OD) {
-			gpio_init(port, GPIO_MODE_AF_OD, max_hz, pin_ll);
+			gpio_init((uint32_t)base_addr, GPIO_MODE_AF_OD, max_hz, pin_ll);
 		} else if (temp == GD32_CNF_OUT_PP) {
-			gpio_init(port, GPIO_MODE_OUT_PP, max_hz, pin_ll);
+			gpio_init((uint32_t)base_addr, GPIO_MODE_OUT_PP, max_hz, pin_ll);
 		} else {
-			gpio_init(port, GPIO_MODE_OUT_OD, max_hz, pin_ll);
+			gpio_init((uint32_t)base_addr, GPIO_MODE_OUT_OD, max_hz, pin_ll);
 		}
-
-
 	}
 
 	return 0;
@@ -293,7 +291,7 @@ static int gpio_gd32_config(struct device *dev, int access_op,
 		goto release_lock;
 	}
 
-	if (gpio_gd32_configure((uint32_t)cfg->base, pin, pincfg, 0) != 0) {
+	if (gpio_gd32_configure(cfg->base, pin, pincfg, 0) != 0) {
 		err = -EIO;
 		goto release_lock;
 	}
