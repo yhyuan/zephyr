@@ -526,30 +526,19 @@ GPIO_DEVICE_INIT_GD32(k, K);
 #endif /* CONFIG_GPIO_GD32_PORTK */
 #endif
 
-#if defined(CONFIG_SOC_SERIES_GD32F1X)
-
-static int gpio_gd32_afio_init(struct device *device)
+static int gpio_gd32_af_init(struct device *device)
 {
-	UNUSED(device);
+	//UNUSED(device);
 
-	LL_APB2_GRP1_EnableClock(LL_APB2_GRP1_PERIPH_AFIO);
+	struct device *clk = device_get_binding(GD32_CLOCK_CONTROL_NAME);
+	struct gd32_pclken pclken = {
+		.bus = GD32_CLOCK_BUS_APB2,
+		.enr = 0x0,
+	};
 
-#if defined(CONFIG_GPIO_GD32_SWJ_NONJTRST)
-	/* released PB4 */
-	__HAL_AFIO_REMAP_SWJ_NONJTRST();
-#elif defined(CONFIG_GPIO_GD32_SWJ_NOJTAG)
-	/* released PB4 PB3 PA15 */
-	__HAL_AFIO_REMAP_SWJ_NOJTAG();
-#elif defined(CONFIG_GPIO_GD32_SWJ_DISABLE)
-	/* released PB4 PB3 PA13 PA14 PA15 */
-	__HAL_AFIO_REMAP_SWJ_DISABLE();
-#endif
-
-	LL_APB2_GRP1_DisableClock(LL_APB2_GRP1_PERIPH_AFIO);
+	clock_control_on(clk, (clock_control_subsys_t *) &pclken);
 
 	return 0;
 }
 
-DEVICE_INIT(gpio_gd32_afio, "", gpio_gd32_afio_init, NULL, NULL, PRE_KERNEL_2, 0);
-
-#endif /* CONFIG_SOC_SERIES_GD32F1X */
+DEVICE_INIT(gpio_gd32_af, "", gpio_gd32_af_init, NULL, NULL, PRE_KERNEL_2, 0);
