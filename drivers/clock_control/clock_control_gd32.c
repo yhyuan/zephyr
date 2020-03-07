@@ -39,7 +39,7 @@ static int gd32_rcu_off(struct device *dev, clock_control_subsys_t sub_system)
 
 static int gd32_rcu_init(struct device *dev)
 {
-	rcu_deinit();
+	///rcu_deinit();
 
 	return 0;
 }
