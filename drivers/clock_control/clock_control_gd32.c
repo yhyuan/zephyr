@@ -19,21 +19,32 @@ struct gd32_rcu_config {
 #define DEV_CFG(dev)  ((struct gd32_rcu_config *)(dev->config->config_info))
 #define DEV_BASE(dev) (DEV_CFG(dev)->base_address)
 
-static uint32_t en_offset[] = {0, AHBEN_REG_OFFSET, APB1EN_REG_OFFSET, APB2EN_REG_OFFSET};
+static uint32_t  en_offset[] = {0,  AHBEN_REG_OFFSET,  APB1EN_REG_OFFSET,  APB2EN_REG_OFFSET};
+static uint32_t rst_offset[] = {0, AHBRST_REG_OFFSET, APB1RST_REG_OFFSET, APB2RST_REG_OFFSET};
+
+static inline void periph_clock_enable(uint32_t addr, uint32_t bit)
+{
+	*(volatile uint32_t*)(addr) |= bit;
+}
+
+static inline void periph_clock_disable(uint32_t addr, uint32_t bit)
+{
+	*(volatile uint32_t*)(addr) &= ~bit;
+}
+
 
 static int gd32_rcu_on(struct device *dev, clock_control_subsys_t sub_system)
 {
-	uint32_t rcu_gpioa = RCU_GPIOA;
 	struct gd32_pclken* pclken = (struct gd32_pclken*)sub_system;
-	rcu_periph_clock_enable(RCU_REGIDX_BIT(en_offset[pclken->bus], pclken->enr));
+	periph_clock_enable(((uint32_t)DEV_CFG(dev)->base_address) + en_offset[pclken->bus], pclken->enr);
 
 	return 0;
 }
 
 static int gd32_rcu_off(struct device *dev, clock_control_subsys_t sub_system)
 {
-//void rcu_periph_clock_sleep_disable(rcu_periph_sleep_enum periph);
-	rcu_periph_clock_disable((rcu_periph_enum)sub_system);
+	struct gd32_pclken* pclken = (struct gd32_pclken*)sub_system;
+	periph_clock_disable(((uint32_t)DEV_CFG(dev)->base_address) + rst_offset[pclken->bus], pclken->enr);
 	return 0;
 }
 
