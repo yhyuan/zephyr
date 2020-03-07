@@ -22,8 +22,17 @@
 		};
 	};
 
+	gpio_keys {
+		compatible = "gpio-keys";
+		button: button {
+			gpios = <&gpioc 13 GPIO_INT_ACTIVE_LOW>;
+			label = "BUTTON";
+		};
+	};
+
 	aliases {
 		led0 = &led;
+		sw0 = &button;
 	};
 };
 
