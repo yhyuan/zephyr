@@ -453,10 +453,22 @@ static int gpio_gd32_init(struct device *device)
 	return 0;
 }
 
+#define CHAR_A 'A'
+#define CHAR_B 'B'
+#define CHAR_C 'C'
+#define CHAR_D 'D'
+#define CHAR_E 'E'
+#define CHAR_F 'F'
+#define CHAR_G 'G'
+#define CHAR_H 'H'
+#define CHAR_I 'I'
+#define CHAR_J 'J'
+#define CHAR_K 'K'
+
 #define GPIO_DEVICE_INIT(__name, __suffix, __base_addr, __port, __cenr, __bus) \
 	static const struct gpio_gd32_config gpio_gd32_cfg_## __suffix = {   \
 		.base = (u32_t *)__base_addr,				       \
-		.port = __port,						       \
+		.port = __port - 'A',					       \
 		.pclken = {                                                    \
 			.enr = __cenr,                                         \
 			.bus = __bus,                                          \
@@ -472,32 +484,32 @@ static int gpio_gd32_init(struct device *device)
 			    CONFIG_KERNEL_INIT_PRIORITY_DEFAULT,	       \
 			    &gpio_gd32_driver)
 
-#define GPIO_DEVICE_INIT_GD32(__suffix, __SUFFIX)		      \
-	GPIO_DEVICE_INIT(DT_GPIO_GD32_GPIO##__SUFFIX##_LABEL,	      \
-			 __suffix,				      \
+#define GPIO_DEVICE_INIT_GD32(__SUFFIX)		     \
+	GPIO_DEVICE_INIT(DT_GPIO_GD32_GPIO##__SUFFIX##_LABEL,	     \
+			 __SUFFIX,				     \
 			 DT_GPIO_GD32_GPIO##__SUFFIX##_BASE_ADDRESS, \
-			 GPIO##__SUFFIX,			     \
+			 CHAR_##__SUFFIX,		     \
 			 DT_GPIO_GD32_GPIO##__SUFFIX##_CLOCK_BITS,   \
 			 DT_GPIO_GD32_GPIO##__SUFFIX##_CLOCK_BUS)
 
 #ifdef CONFIG_GPIO_GD32_PORTA
-GPIO_DEVICE_INIT_GD32(a, A);
+GPIO_DEVICE_INIT_GD32(A);
 #endif /* CONFIG_GPIO_GD32_PORTA */
 
 #ifdef CONFIG_GPIO_GD32_PORTB
-GPIO_DEVICE_INIT_GD32(b, B);
+GPIO_DEVICE_INIT_GD32(B);
 #endif /* CONFIG_GPIO_GD32_PORTB */
 
 #ifdef CONFIG_GPIO_GD32_PORTC
-GPIO_DEVICE_INIT_GD32(c, C);
+GPIO_DEVICE_INIT_GD32(C);
 #endif /* CONFIG_GPIO_GD32_PORTC */
 
 #ifdef CONFIG_GPIO_GD32_PORTD
-GPIO_DEVICE_INIT_GD32(d, D);
+GPIO_DEVICE_INIT_GD32(D);
 #endif /* CONFIG_GPIO_GD32_PORTD */
 
 #ifdef CONFIG_GPIO_GD32_PORTE
-GPIO_DEVICE_INIT_GD32(e, E);
+GPIO_DEVICE_INIT_GD32(E);
 #endif /* CONFIG_GPIO_GD32_PORTE */
 
 #if 0

@@ -227,7 +227,6 @@ struct gpio_gd32_config {
 	u32_t *base;
 	/* IO port */
 	int port;
-	int rcu;
 	struct gd32_pclken pclken;
 };
 
