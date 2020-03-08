@@ -17,7 +17,7 @@
 //#include <pinmux/gd32/pinmux_gd32.h>
 #include <drivers/pinmux.h>
 #include <sys/util.h>
-//#include <interrupt_controller/exti_gd32.h>
+#include <interrupt_controller/exti_gd32.h>
 
 #include "gpio_gd32.h"
 #include "gpio_utils.h"
@@ -159,32 +159,6 @@ static inline uint32_t gpio_gd32_pin_to_exti_line(int pin)
 #endif
 }
 
-static void gpio_gd32_set_exti_source(int port, int pin)
-{
-	//TODO uint32_t line = gpio_gd32_pin_to_exti_line(pin);
-
-#if defined(CONFIG_SOC_SERIES_GD32L0X) && defined(LL_SYSCFG_EXTI_PORTH)
-	/*
-	 * Ports F and G are not present on some GD32L0 parts, so
-	 * for these parts port H external interrupt should be enabled
-	 * by writing value 0x5 instead of 0x7.
-	 */
-	if (port == GD32_PORTH) {
-		port = LL_SYSCFG_EXTI_PORTH;
-	}
-#endif
-
-#ifdef CONFIG_SOC_SERIES_GD32F1X
-	LL_GPIO_AF_SetEXTISource(port, line);
-#elif CONFIG_SOC_SERIES_GD32MP1X
-	LL_EXTI_SetEXTISource(port, line);
-#elif defined(CONFIG_SOC_SERIES_GD32G0X)
-	LL_EXTI_SetEXTISource(port, line);
-#else
-	//TODO LL_SYSCFG_SetEXTISource(port, line);
-#endif
-}
-
 static int gpio_gd32_get_exti_source(int pin)
 {
 	//TODO uint32_t line = gpio_gd32_pin_to_exti_line(pin);
@@ -212,54 +186,6 @@ static int gpio_gd32_get_exti_source(int pin)
 #endif
 
 	return port;
-}
-
-/**
- * @brief Enable EXTI of the specific line
- */
-static int gpio_gd32_enable_int(int port, int pin)
-{
-#if defined(CONFIG_SOC_SERIES_GD32F2X) ||     \
-	defined(CONFIG_SOC_SERIES_GD32F3X) || \
-	defined(CONFIG_SOC_SERIES_GD32F4X) || \
-	defined(CONFIG_SOC_SERIES_GD32F7X) || \
-	defined(CONFIG_SOC_SERIES_GD32H7X) || \
-	defined(CONFIG_SOC_SERIES_GD32L1X) || \
-	defined(CONFIG_SOC_SERIES_GD32L4X) || \
-	defined(CONFIG_SOC_SERIES_GD32G4X)
-	struct device *clk = device_get_binding(GD32_CLOCK_CONTROL_NAME);
-	struct gd32_pclken pclken = {
-#ifdef CONFIG_SOC_SERIES_GD32H7X
-		.bus = GD32_CLOCK_BUS_APB4,
-		.enr = LL_APB4_GRP1_PERIPH_SYSCFG
-#else
-		.bus = GD32_CLOCK_BUS_APB2,
-		.enr = LL_APB2_GRP1_PERIPH_SYSCFG
-#endif /* CONFIG_SOC_SERIES_GD32H7X */
-	};
-	/* Enable SYSCFG clock */
-	clock_control_on(clk, (clock_control_subsys_t *) &pclken);
-#endif
-
-	if (pin > 15) {
-		return -EINVAL;
-	}
-
-	gpio_gd32_set_exti_source(port, pin);
-
-	return 0;
-}
-
-/**
- * @brief Get enabled GPIO port for EXTI of the specific pin number
- */
-static int gpio_gd32_int_enabled_port(int pin)
-{
-	if (pin > 15) {
-		return -EINVAL;
-	}
-
-	return gpio_gd32_get_exti_source(pin);
 }
 
 /**
@@ -301,44 +227,41 @@ static int gpio_gd32_config(struct device *dev, int access_op,
 	}
 
 	if (flags & GPIO_INT) {
-#if 0
 		if (gd32_exti_set_callback(pin, cfg->port,
 					    gpio_gd32_isr, dev) != 0) {
 			err = -EBUSY;
 			goto release_lock;
 		}
 
-		gpio_gd32_enable_int(cfg->port, pin);
+		gpio_exti_source_select(cfg->port, 1<<pin);
 
 		if ((flags & GPIO_INT_EDGE) != 0) {
 			int edge = 0;
 
 			if ((flags & GPIO_INT_DOUBLE_EDGE) != 0) {
-				edge = GD32_EXTI_TRIG_RISING |
-				       GD32_EXTI_TRIG_FALLING;
+				edge = EXTI_TRIG_BOTH;
 			} else if ((flags & GPIO_INT_ACTIVE_HIGH) != 0) {
-				edge = GD32_EXTI_TRIG_RISING;
+				edge = EXTI_TRIG_RISING;
 			} else {
-				edge = GD32_EXTI_TRIG_FALLING;
+				edge = EXTI_TRIG_FALLING;
 			}
 
-			gd32_exti_trigger(pin, edge);
+			gd32_exti_trigger(cfg->port, pin, edge);
 		} else {
 			/* Level trigger interrupts not supported */
 			err = -ENOTSUP;
 			goto release_lock;
 		}
 
-		if (gd32_exti_enable(pin) != 0) {
+		if (gd32_exti_enable(cfg->port, pin) != 0) {
 			err = -EIO;
 			goto release_lock;
 		}
-#endif
 	} else {
-		if (gpio_gd32_int_enabled_port(pin) == cfg->port) {
+//		if (gpio_gd32_int_enabled_port(pin) == cfg->port) {
 //			gd32_exti_disable(pin);
 //			gd32_exti_unset_callback(pin);
-		}
+//		}
 	}
 
 release_lock:
