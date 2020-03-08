@@ -54,7 +54,7 @@ static void exti_init_interrupt(exti_line_enum linex)
     EXTI_INTEN |= (uint32_t) linex;
 }
 
-int gd32_exti_enable(int port, int line)
+int gd32_exti_enable(int line)
 {
 	int irqnum = 0;
 
@@ -80,7 +80,7 @@ int gd32_exti_enable(int port, int line)
 	return 0;
 }
 
-void gd32_exti_disable(int port, int line)
+void gd32_exti_disable(int line)
 {
 	if (line < 32) {
 		exti_interrupt_disable(line);
@@ -142,7 +142,7 @@ static inline void gd32_exti_clear_pending(int line)
 	}
 }
 
-void gd32_exti_trigger(int port, int line, int trigger)
+void gd32_exti_trigger(int line, int trigger)
 {
 	if (trigger & EXTI_TRIG_RISING) {
 		if (line < 32) {

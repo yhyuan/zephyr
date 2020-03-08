@@ -31,14 +31,24 @@
  *
  * @param line EXTI# line
  */
-int gd32_exti_enable(int port, int pin);
+int gd32_exti_enable(int pin);
 
 /**
  * @brief disable EXTI interrupt for specific line
  *
  * @param line EXTI# line
  */
-void gd32_exti_disable(int port, int pin);
+void gd32_exti_disable(int pin);
+
+/**
+ * @brief EXTI trigger flags
+ */
+enum gd32_exti_trigger {
+	/* trigger on rising edge */
+	GD32_EXTI_TRIG_RISING  = 0x1,
+	/* trigger on falling endge */
+	GD32_EXTI_TRIG_FALLING = 0x2,
+};
 
 /**
  * @brief set EXTI interrupt line triggers
@@ -46,7 +56,7 @@ void gd32_exti_disable(int port, int pin);
  * @param line EXTI# line
  * @param trg  OR'ed gd32_exti_trigger flags
  */
-void gd32_exti_trigger(int port, int pin, int trg);
+void gd32_exti_trigger(int pin, int trg);
 
 /* callback for exti interrupt */
 typedef void (*gd32_exti_callback_t) (int line, void *user);

@@ -12,9 +12,9 @@
 #include <device.h>
 #include <soc.h>
 #include <drivers/gpio.h>
-#include <drivers/clock_control.h>
-#include <drivers/clock_control/gd32_clock_control.h>
+#include <clock_control/gd32_clock_control.h>
 //#include <pinmux/gd32/pinmux_gd32.h>
+//#include <drivers/clock_control.h>
 #include <drivers/pinmux.h>
 #include <sys/util.h>
 #include <interrupt_controller/exti_gd32.h>
@@ -94,6 +94,8 @@ static inline u32_t gd32_pinval_get(int pin)
  */
 int gpio_gd32_configure(u32_t *base_addr, int pin, int conf, int altf)
 {
+	uint32_t gpio = (uint32_t)base_addr;
+
 	int pin_ll = gd32_pinval_get(pin);
 
 	ARG_UNUSED(altf);
@@ -104,16 +106,16 @@ int gpio_gd32_configure(u32_t *base_addr, int pin, int conf, int altf)
 		temp = conf & (GD32_CNF_IN_MASK << GD32_CNF_IN_SHIFT);
 
 		if (temp == GD32_CNF_IN_ANALOG) {
-			gpio_init((uint32_t)base_addr, GPIO_MODE_AIN, 0, pin_ll);
+			gpio_init(gpio, GPIO_MODE_AIN, 0, pin_ll);
 		} else if (temp == GD32_CNF_IN_FLOAT) {
-			gpio_init((uint32_t)base_addr, GPIO_MODE_IN_FLOATING, 0, pin_ll);
+			gpio_init(gpio, GPIO_MODE_IN_FLOATING, 0, pin_ll);
 		} else {
 			temp = conf & (GD32_PUPD_MASK << GD32_PUPD_SHIFT);
 
 			if (temp == GD32_PUPD_PULL_UP) {
-				gpio_init((uint32_t)base_addr, GPIO_MODE_IPU, 0, pin_ll);
+				gpio_init(gpio, GPIO_MODE_IPU, 0, pin_ll);
 			} else {
-				gpio_init((uint32_t)base_addr, GPIO_MODE_IPD, 0, pin_ll);
+				gpio_init(gpio, GPIO_MODE_IPD, 0, pin_ll);
 			}
 		}
 
@@ -159,9 +161,14 @@ static inline uint32_t gpio_gd32_pin_to_exti_line(int pin)
 #endif
 }
 
+static void gpio_gd32_set_exti_source(int port, int pin)
+{
+	gpio_exti_source_select(port, pin);
+}
+
 static int gpio_gd32_get_exti_source(int pin)
 {
-	//TODO uint32_t line = gpio_gd32_pin_to_exti_line(pin);
+	//uint32_t line = gpio_gd32_pin_to_exti_line(pin);
 	int port;
 
 #ifdef CONFIG_SOC_SERIES_GD32F1X
@@ -187,6 +194,21 @@ static int gpio_gd32_get_exti_source(int pin)
 
 	return port;
 }
+
+/**
+ * @brief Enable EXTI of the specific line
+ */
+static int gpio_gd32_enable_int(int port, int pin)
+{
+	if (pin > 15) {
+		return -EINVAL;
+	}
+
+	gpio_gd32_set_exti_source(port, pin);
+
+	return 0;
+}
+
 
 /**
  * @brief Configure pin or port
@@ -233,34 +255,35 @@ static int gpio_gd32_config(struct device *dev, int access_op,
 			goto release_lock;
 		}
 
-		gpio_exti_source_select(cfg->port, 1<<pin);
+		gpio_gd32_enable_int(cfg->port, pin);
 
 		if ((flags & GPIO_INT_EDGE) != 0) {
 			int edge = 0;
 
 			if ((flags & GPIO_INT_DOUBLE_EDGE) != 0) {
-				edge = EXTI_TRIG_BOTH;
+				edge = GD32_EXTI_TRIG_RISING |
+				       GD32_EXTI_TRIG_FALLING;
 			} else if ((flags & GPIO_INT_ACTIVE_HIGH) != 0) {
-				edge = EXTI_TRIG_RISING;
+				edge = GD32_EXTI_TRIG_RISING;
 			} else {
-				edge = EXTI_TRIG_FALLING;
+				edge = GD32_EXTI_TRIG_FALLING;
 			}
 
-			gd32_exti_trigger(cfg->port, pin, edge);
+			gd32_exti_trigger(pin, edge);
 		} else {
 			/* Level trigger interrupts not supported */
 			err = -ENOTSUP;
 			goto release_lock;
 		}
 
-		if (gd32_exti_enable(cfg->port, pin) != 0) {
+		if (gd32_exti_enable(pin) != 0) {
 			err = -EIO;
 			goto release_lock;
 		}
 	} else {
 //		if (gpio_gd32_int_enabled_port(pin) == cfg->port) {
-//			gd32_exti_disable(pin);
-//			gd32_exti_unset_callback(pin);
+			gd32_exti_disable(pin);
+			gd32_exti_unset_callback(pin);
 //		}
 	}
 
@@ -276,6 +299,7 @@ static int gpio_gd32_write(struct device *dev, int access_op,
 			    u32_t pin, u32_t value)
 {
 	const struct gpio_gd32_config *cfg = dev->config->config_info;
+	uint32_t gpio = (uint32_t)cfg->base;
 
 	if (access_op != GPIO_ACCESS_BY_PIN) {
 		return -ENOTSUP;
@@ -283,9 +307,9 @@ static int gpio_gd32_write(struct device *dev, int access_op,
 
 	pin = gd32_pinval_get(pin);
 	if (value != 0U) {
-		gpio_bit_set((uint32_t)cfg->base, pin);
+		gpio_bit_set(gpio, pin);
 	} else {
-		gpio_bit_reset((uint32_t)cfg->base, pin);
+		gpio_bit_reset(gpio, pin);
 	}
 
 	return 0;
@@ -298,12 +322,13 @@ static int gpio_gd32_read(struct device *dev, int access_op,
 			   u32_t pin, u32_t *value)
 {
 	const struct gpio_gd32_config *cfg = dev->config->config_info;
+	uint32_t gpio = (uint32_t)cfg->base;
 
 	if (access_op != GPIO_ACCESS_BY_PIN) {
 		return -ENOTSUP;
 	}
 
-	*value = (gpio_input_port_get((uint32_t)cfg->base) >> pin) & 0x1;
+	*value = (gpio_input_port_get(gpio) >> pin) & 0x1;
 
 	return 0;
 }
@@ -368,23 +393,30 @@ static const struct gpio_driver_api gpio_gd32_driver = {
 static int gpio_gd32_init(struct device *device)
 {
 	const struct gpio_gd32_config *cfg = device->config->config_info;
-	struct device *clk = device_get_binding(GD32_CLOCK_CONTROL_NAME);
-	clock_control_on(clk, (clock_control_subsys_t *) &cfg->pclken);
+
+	/* enable clock for subsystem */
+	struct device *clk =
+		device_get_binding(GD32_CLOCK_CONTROL_NAME);
+
+	if (clock_control_on(clk,
+			     (clock_control_subsys_t *)&cfg->pclken) != 0) {
+		return -EIO;
+	}
 
 	return 0;
 }
 
-#define CHAR_A 'A'
-#define CHAR_B 'B'
-#define CHAR_C 'C'
-#define CHAR_D 'D'
-#define CHAR_E 'E'
-#define CHAR_F 'F'
-#define CHAR_G 'G'
-#define CHAR_H 'H'
-#define CHAR_I 'I'
-#define CHAR_J 'J'
-#define CHAR_K 'K'
+#define GD32_PORTA 'A'
+#define GD32_PORTB 'B'
+#define GD32_PORTC 'C'
+#define GD32_PORTD 'D'
+#define GD32_PORTE 'E'
+#define GD32_PORTF 'F'
+#define GD32_PORTG 'G'
+#define GD32_PORTH 'H'
+#define GD32_PORTI 'I'
+#define GD32_PORTJ 'J'
+#define GD32_PORTK 'K'
 
 #define GPIO_DEVICE_INIT(__name, __suffix, __base_addr, __port, __cenr, __bus) \
 	static const struct gpio_gd32_config gpio_gd32_cfg_## __suffix = {   \
@@ -405,35 +437,34 @@ static int gpio_gd32_init(struct device *device)
 			    CONFIG_KERNEL_INIT_PRIORITY_DEFAULT,	       \
 			    &gpio_gd32_driver)
 
-#define GPIO_DEVICE_INIT_GD32(__SUFFIX)		     \
-	GPIO_DEVICE_INIT(DT_GPIO_GD32_GPIO##__SUFFIX##_LABEL,	     \
-			 __SUFFIX,				     \
+#define GPIO_DEVICE_INIT_GD32(__suffix, __SUFFIX)		      \
+	GPIO_DEVICE_INIT(DT_GPIO_GD32_GPIO##__SUFFIX##_LABEL,	      \
+			 __suffix,				      \
 			 DT_GPIO_GD32_GPIO##__SUFFIX##_BASE_ADDRESS, \
-			 CHAR_##__SUFFIX,		     \
+			 GD32_PORT##__SUFFIX,			      \
 			 DT_GPIO_GD32_GPIO##__SUFFIX##_CLOCK_BITS,   \
 			 DT_GPIO_GD32_GPIO##__SUFFIX##_CLOCK_BUS)
 
 #ifdef CONFIG_GPIO_GD32_PORTA
-GPIO_DEVICE_INIT_GD32(A);
+GPIO_DEVICE_INIT_GD32(a, A);
 #endif /* CONFIG_GPIO_GD32_PORTA */
 
 #ifdef CONFIG_GPIO_GD32_PORTB
-GPIO_DEVICE_INIT_GD32(B);
+GPIO_DEVICE_INIT_GD32(b, B);
 #endif /* CONFIG_GPIO_GD32_PORTB */
 
 #ifdef CONFIG_GPIO_GD32_PORTC
-GPIO_DEVICE_INIT_GD32(C);
+GPIO_DEVICE_INIT_GD32(c, C);
 #endif /* CONFIG_GPIO_GD32_PORTC */
 
 #ifdef CONFIG_GPIO_GD32_PORTD
-GPIO_DEVICE_INIT_GD32(D);
+GPIO_DEVICE_INIT_GD32(d, D);
 #endif /* CONFIG_GPIO_GD32_PORTD */
 
 #ifdef CONFIG_GPIO_GD32_PORTE
-GPIO_DEVICE_INIT_GD32(E);
+GPIO_DEVICE_INIT_GD32(e, E);
 #endif /* CONFIG_GPIO_GD32_PORTE */
 
-#if 0
 #ifdef CONFIG_GPIO_GD32_PORTF
 GPIO_DEVICE_INIT_GD32(f, F);
 #endif /* CONFIG_GPIO_GD32_PORTF */
@@ -457,7 +488,6 @@ GPIO_DEVICE_INIT_GD32(j, J);
 #ifdef CONFIG_GPIO_GD32_PORTK
 GPIO_DEVICE_INIT_GD32(k, K);
 #endif /* CONFIG_GPIO_GD32_PORTK */
-#endif
 
 static int gpio_gd32_afio_init(struct device *device)
 {
