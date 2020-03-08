@@ -21,61 +21,14 @@
 #include <sys/__assert.h>
 #include "exti_gd32.h"
 
-#if defined(CONFIG_SOC_SERIES_GD32F0X) || \
-    defined(CONFIG_SOC_SERIES_GD32L0X) || \
-    defined(CONFIG_SOC_SERIES_GD32G0X)
-const IRQn_Type exti_irq_table[] = {
-	EXTI0_1_IRQn, EXTI0_1_IRQn, EXTI2_3_IRQn, EXTI2_3_IRQn,
-	EXTI4_15_IRQn, EXTI4_15_IRQn, EXTI4_15_IRQn, EXTI4_15_IRQn,
-	EXTI4_15_IRQn, EXTI4_15_IRQn, EXTI4_15_IRQn, EXTI4_15_IRQn,
-	EXTI4_15_IRQn, EXTI4_15_IRQn, EXTI4_15_IRQn, EXTI4_15_IRQn
-};
-#elif defined(CONFIG_SOC_SERIES_GD32F1X) || \
-	defined(CONFIG_SOC_SERIES_GD32H7X) || \
-	defined(CONFIG_SOC_SERIES_GD32L1X) || \
-	defined(CONFIG_SOC_SERIES_GD32L4X) || \
-	defined(CONFIG_SOC_SERIES_GD32WBX) || \
-	defined(CONFIG_SOC_SERIES_GD32G4X)
+#include "gd32vf103_exti.h"
+
 const IRQn_Type exti_irq_table[] = {
 	EXTI0_IRQn, EXTI1_IRQn, EXTI2_IRQn, EXTI3_IRQn,
-	EXTI4_IRQn, EXTI9_5_IRQn, EXTI9_5_IRQn, EXTI9_5_IRQn,
-	EXTI9_5_IRQn, EXTI9_5_IRQn, EXTI15_10_IRQn, EXTI15_10_IRQn,
-	EXTI15_10_IRQn, EXTI15_10_IRQn, EXTI15_10_IRQn, EXTI15_10_IRQn
+	EXTI4_IRQn, EXTI5_9_IRQn, EXTI5_9_IRQn, EXTI5_9_IRQn,
+	EXTI5_9_IRQn, EXTI5_9_IRQn, EXTI10_15_IRQn, EXTI10_15_IRQn,
+	EXTI10_15_IRQn, EXTI10_15_IRQn, EXTI10_15_IRQn, EXTI10_15_IRQn
 };
-#elif defined(CONFIG_SOC_SERIES_GD32F3X)
-const IRQn_Type exti_irq_table[] = {
-	EXTI0_IRQn, EXTI1_IRQn, EXTI2_TSC_IRQn, EXTI3_IRQn,
-	EXTI4_IRQn, EXTI9_5_IRQn, EXTI9_5_IRQn, EXTI9_5_IRQn,
-	EXTI9_5_IRQn, EXTI9_5_IRQn, EXTI15_10_IRQn, EXTI15_10_IRQn,
-	EXTI15_10_IRQn, EXTI15_10_IRQn, EXTI15_10_IRQn, EXTI15_10_IRQn
-};
-#elif defined(CONFIG_SOC_SERIES_GD32F2X) || \
-	defined(CONFIG_SOC_SERIES_GD32F4X)
-const IRQn_Type exti_irq_table[] = {
-	EXTI0_IRQn, EXTI1_IRQn, EXTI2_IRQn, EXTI3_IRQn,
-	EXTI4_IRQn, EXTI9_5_IRQn, EXTI9_5_IRQn, EXTI9_5_IRQn,
-	EXTI9_5_IRQn, EXTI9_5_IRQn, EXTI15_10_IRQn, EXTI15_10_IRQn,
-	EXTI15_10_IRQn, EXTI15_10_IRQn, EXTI15_10_IRQn, EXTI15_10_IRQn,
-	PVD_IRQn, 0xFF, OTG_FS_WKUP_IRQn, 0xFF,
-	0xFF, TAMP_STAMP_IRQn, RTC_WKUP_IRQn
-};
-#elif defined(CONFIG_SOC_SERIES_GD32F7X)
-const IRQn_Type exti_irq_table[] = {
-	EXTI0_IRQn, EXTI1_IRQn, EXTI2_IRQn, EXTI3_IRQn,
-	EXTI4_IRQn, EXTI9_5_IRQn, EXTI9_5_IRQn, EXTI9_5_IRQn,
-	EXTI9_5_IRQn, EXTI9_5_IRQn, EXTI15_10_IRQn, EXTI15_10_IRQn,
-	EXTI15_10_IRQn, EXTI15_10_IRQn, EXTI15_10_IRQn, EXTI15_10_IRQn,
-	PVD_IRQn, 0xFF, OTG_FS_WKUP_IRQn, 0xFF,
-	0xFF, TAMP_STAMP_IRQn, RTC_WKUP_IRQn, LPTIM1_IRQn
-};
-#elif defined(CONFIG_SOC_SERIES_GD32MP1X)
-const IRQn_Type exti_irq_table[] = {
-	EXTI0_IRQn, EXTI1_IRQn, EXTI2_IRQn, EXTI3_IRQn,
-	EXTI4_IRQn, EXTI5_IRQn, EXTI6_IRQn, EXTI7_IRQn,
-	EXTI8_IRQn, EXTI9_IRQn, EXTI10_IRQn, EXTI11_IRQn,
-	EXTI12_IRQn, EXTI13_IRQn, EXTI14_IRQn, EXTI15_IRQn
-};
-#endif
 
 /* wrapper for user callback */
 struct __exti_cb {
@@ -89,13 +42,25 @@ struct gd32_exti_data {
 	struct __exti_cb cb[1];//(exti_irq_table)];
 };
 
+static void exti_init_interrupt(exti_line_enum linex)
+{
+    /* reset the EXTI line x */
+    EXTI_INTEN &= ~(uint32_t) linex;
+    EXTI_EVEN &= ~(uint32_t) linex;
+    EXTI_RTEN &= ~(uint32_t) linex;
+    EXTI_FTEN &= ~(uint32_t) linex;
+
+    /* set the EXTI mode and enable the interrupts or events from EXTI line x */
+    EXTI_INTEN |= (uint32_t) linex;
+}
+
 int gd32_exti_enable(int port, int line)
 {
 	int irqnum = 0;
 
 	/* Enable requested line interrupt */
 	if (line < 32) {
-	//	LL_EXTI_EnableIT_0_31(1 << line);
+		exti_init_interrupt(line);
 	} else {
 		__ASSERT_NO_MSG(line);
 	}
@@ -118,7 +83,7 @@ int gd32_exti_enable(int port, int line)
 void gd32_exti_disable(int port, int line)
 {
 	if (line < 32) {
-//		LL_EXTI_DisableIT_0_31(1 << line);
+		exti_interrupt_disable(line);
 	} else {
 
 		__ASSERT_NO_MSG(line);
@@ -134,16 +99,33 @@ void gd32_exti_disable(int port, int line)
 static inline int gd32_exti_is_pending(int line)
 {
 	if (line < 32) {
-#if defined(CONFIG_SOC_SERIES_GD32MP1X) || defined(CONFIG_SOC_SERIES_GD32G0X)
-		return (LL_EXTI_IsActiveRisingFlag_0_31(1 << line) ||
-			LL_EXTI_IsActiveFallingFlag_0_31(1 << line));
-#else
-//		return LL_EXTI_IsActiveFlag_0_31(1 << line);
-#endif
+		return exti_interrupt_flag_get(line);
 	} else {
 		__ASSERT_NO_MSG(line);
 		return 0;
 	}
+}
+
+static void exti_set_trigger(exti_line_enum linex, exti_trig_type_enum trig_type)
+{
+    /* set the EXTI trigger type */
+    switch (trig_type) {
+    case EXTI_TRIG_RISING:
+        EXTI_RTEN |= (uint32_t) linex;
+        EXTI_FTEN &= ~(uint32_t) linex;
+        break;
+    case EXTI_TRIG_FALLING:
+        EXTI_RTEN &= ~(uint32_t) linex;
+        EXTI_FTEN |= (uint32_t) linex;
+        break;
+    case EXTI_TRIG_BOTH:
+        EXTI_RTEN |= (uint32_t) linex;
+        EXTI_FTEN |= (uint32_t) linex;
+        break;
+    case EXTI_TRIG_NONE:
+    default:
+        break;
+    }
 }
 
 /**
@@ -154,12 +136,7 @@ static inline int gd32_exti_is_pending(int line)
 static inline void gd32_exti_clear_pending(int line)
 {
 	if (line < 32) {
-#if defined(CONFIG_SOC_SERIES_GD32MP1X) || defined(CONFIG_SOC_SERIES_GD32G0X)
-		LL_EXTI_ClearRisingFlag_0_31(1 << line);
-		LL_EXTI_ClearFallingFlag_0_31(1 << line);
-#else
-//		LL_EXTI_ClearFlag_0_31(1 << line);
-#endif
+		exti_interrupt_flag_clear(line);
 	} else {
 		__ASSERT_NO_MSG(line);
 	}
@@ -169,7 +146,7 @@ void gd32_exti_trigger(int port, int line, int trigger)
 {
 	if (trigger & EXTI_TRIG_RISING) {
 		if (line < 32) {
-//			LL_EXTI_EnableRisingTrig_0_31(1 << line);
+			exti_set_trigger(line, trigger);
 		} else {
 			__ASSERT_NO_MSG(line);
 		}
@@ -177,7 +154,7 @@ void gd32_exti_trigger(int port, int line, int trigger)
 
 	if (trigger & EXTI_TRIG_FALLING) {
 		if (line < 32) {
-//			LL_EXTI_EnableFallingTrig_0_31(1 << line);
+			exti_set_trigger(line, trigger);
 		} else {
 			__ASSERT_NO_MSG(line);
 		}
@@ -216,25 +193,6 @@ static void __gd32_exti_isr(int min, int max, void *arg)
 	}
 }
 
-#if defined(CONFIG_SOC_SERIES_GD32F0X) || \
-	defined(CONFIG_SOC_SERIES_GD32L0X) || \
-	defined(CONFIG_SOC_SERIES_GD32G0X)
-static inline void __gd32_exti_isr_0_1(void *arg)
-{
-	__gd32_exti_isr(0, 2, arg);
-}
-
-static inline void __gd32_exti_isr_2_3(void *arg)
-{
-	__gd32_exti_isr(2, 4, arg);
-}
-
-static inline void __gd32_exti_isr_4_15(void *arg)
-{
-	__gd32_exti_isr(4, 16, arg);
-}
-
-#else
 static inline void __gd32_exti_isr_0(void *arg)
 {
 	__gd32_exti_isr(0, 1, arg);
@@ -260,105 +218,15 @@ static inline void __gd32_exti_isr_4(void *arg)
 	__gd32_exti_isr(4, 5, arg);
 }
 
-#if defined(CONFIG_SOC_SERIES_GD32MP1X)
-static inline void __gd32_exti_isr_5(void *arg)
-{
-	__gd32_exti_isr(5, 6, arg);
-}
-
-static inline void __gd32_exti_isr_6(void *arg)
-{
-	__gd32_exti_isr(6, 7, arg);
-}
-
-static inline void __gd32_exti_isr_7(void *arg)
-{
-	__gd32_exti_isr(7, 8, arg);
-}
-
-static inline void __gd32_exti_isr_8(void *arg)
-{
-	__gd32_exti_isr(8, 9, arg);
-}
-
-static inline void __gd32_exti_isr_9(void *arg)
-{
-	__gd32_exti_isr(9, 10, arg);
-}
-
-static inline void __gd32_exti_isr_10(void *arg)
-{
-	__gd32_exti_isr(10, 11, arg);
-}
-
-static inline void __gd32_exti_isr_11(void *arg)
-{
-	__gd32_exti_isr(11, 12, arg);
-}
-
-static inline void __gd32_exti_isr_12(void *arg)
-{
-	__gd32_exti_isr(12, 13, arg);
-}
-
-static inline void __gd32_exti_isr_13(void *arg)
-{
-	__gd32_exti_isr(13, 14, arg);
-}
-
-static inline void __gd32_exti_isr_14(void *arg)
-{
-	__gd32_exti_isr(14, 15, arg);
-}
-
-static inline void __gd32_exti_isr_15(void *arg)
-{
-	__gd32_exti_isr(15, 16, arg);
-}
-#endif
-
-static inline void __gd32_exti_isr_9_5(void *arg)
+static inline void __gd32_exti_isr_5_9(void *arg)
 {
 	__gd32_exti_isr(5, 10, arg);
 }
 
-static inline void __gd32_exti_isr_15_10(void *arg)
+static inline void __gd32_exti_isr_10_15(void *arg)
 {
 	__gd32_exti_isr(10, 16, arg);
 }
-
-#if defined(CONFIG_SOC_SERIES_GD32F4X) || \
-	defined(CONFIG_SOC_SERIES_GD32F7X) || \
-	defined(CONFIG_SOC_SERIES_GD32F2X) || \
-	defined(CONFIG_SOC_SERIES_GD32MP1X)
-static inline void __gd32_exti_isr_16(void *arg)
-{
-	__gd32_exti_isr(16, 17, arg);
-}
-
-static inline void __gd32_exti_isr_18(void *arg)
-{
-	__gd32_exti_isr(18, 19, arg);
-}
-
-static inline void __gd32_exti_isr_21(void *arg)
-{
-	__gd32_exti_isr(21, 22, arg);
-}
-
-static inline void __gd32_exti_isr_22(void *arg)
-{
-	__gd32_exti_isr(22, 23, arg);
-}
-#endif
-#if defined(CONFIG_SOC_SERIES_GD32F7X) || \
-	defined(CONFIG_SOC_SERIES_GD32MP1X)
-static inline void __gd32_exti_isr_23(void *arg)
-{
-	__gd32_exti_isr(23, 24, arg);
-}
-#endif
-#endif /* CONFIG_SOC_SERIES_GD32F0X */
 
 static void __gd32_exti_connect_irqs(struct device *dev);
 
@@ -411,33 +279,7 @@ void gd32_exti_unset_callback(int line)
 static void __gd32_exti_connect_irqs(struct device *dev)
 {
 	ARG_UNUSED(dev);
-
-#if defined(CONFIG_SOC_SERIES_GD32F0X) || \
-	defined(CONFIG_SOC_SERIES_GD32L0X) || \
-	defined(CONFIG_SOC_SERIES_GD32G0X)
-	IRQ_CONNECT(EXTI0_1_IRQn,
-		CONFIG_EXTI_GD32_EXTI1_0_IRQ_PRI,
-		__gd32_exti_isr_0_1, DEVICE_GET(exti_gd32),
-		0);
-	IRQ_CONNECT(EXTI2_3_IRQn,
-		CONFIG_EXTI_GD32_EXTI3_2_IRQ_PRI,
-		__gd32_exti_isr_2_3, DEVICE_GET(exti_gd32),
-		0);
-	IRQ_CONNECT(EXTI4_15_IRQn,
-		CONFIG_EXTI_GD32_EXTI15_4_IRQ_PRI,
-		__gd32_exti_isr_4_15, DEVICE_GET(exti_gd32),
-		0);
-#elif defined(CONFIG_SOC_SERIES_GD32F1X) || \
-	defined(CONFIG_SOC_SERIES_GD32F2X) || \
-	defined(CONFIG_SOC_SERIES_GD32F3X) || \
-	defined(CONFIG_SOC_SERIES_GD32F4X) || \
-	defined(CONFIG_SOC_SERIES_GD32F7X) || \
-	defined(CONFIG_SOC_SERIES_GD32H7X) || \
-	defined(CONFIG_SOC_SERIES_GD32L1X) || \
-	defined(CONFIG_SOC_SERIES_GD32L4X) || \
-	defined(CONFIG_SOC_SERIES_GD32MP1X) || \
-	defined(CONFIG_SOC_SERIES_GD32WBX) || \
-	defined(CONFIG_SOC_SERIES_GD32G4X)
+/*
 	IRQ_CONNECT(EXTI0_IRQn,
 		CONFIG_EXTI_GD32_EXTI0_IRQ_PRI,
 		__gd32_exti_isr_0, DEVICE_GET(exti_gd32),
@@ -446,17 +288,10 @@ static void __gd32_exti_connect_irqs(struct device *dev)
 		CONFIG_EXTI_GD32_EXTI1_IRQ_PRI,
 		__gd32_exti_isr_1, DEVICE_GET(exti_gd32),
 		0);
-#ifdef CONFIG_SOC_SERIES_GD32F3X
-	IRQ_CONNECT(EXTI2_TSC_IRQn,
-		CONFIG_EXTI_GD32_EXTI2_IRQ_PRI,
-		__gd32_exti_isr_2, DEVICE_GET(exti_gd32),
-		0);
-#else
 	IRQ_CONNECT(EXTI2_IRQn,
 		CONFIG_EXTI_GD32_EXTI2_IRQ_PRI,
 		__gd32_exti_isr_2, DEVICE_GET(exti_gd32),
 		0);
-#endif /* CONFIG_SOC_SERIES_GD32F3X */
 	IRQ_CONNECT(EXTI3_IRQn,
 		CONFIG_EXTI_GD32_EXTI3_IRQ_PRI,
 		__gd32_exti_isr_3, DEVICE_GET(exti_gd32),
@@ -465,87 +300,13 @@ static void __gd32_exti_connect_irqs(struct device *dev)
 		CONFIG_EXTI_GD32_EXTI4_IRQ_PRI,
 		__gd32_exti_isr_4, DEVICE_GET(exti_gd32),
 		0);
-#ifndef CONFIG_SOC_SERIES_GD32MP1X
-	IRQ_CONNECT(EXTI9_5_IRQn,
-		CONFIG_EXTI_GD32_EXTI9_5_IRQ_PRI,
-		__gd32_exti_isr_9_5, DEVICE_GET(exti_gd32),
+	IRQ_CONNECT(EXTI5_9_IRQn,
+		CONFIG_EXTI_GD32_EXTI5_9_IRQ_PRI,
+		__gd32_exti_isr_5_9, DEVICE_GET(exti_gd32),
 		0);
-	IRQ_CONNECT(EXTI15_10_IRQn,
-		CONFIG_EXTI_GD32_EXTI15_10_IRQ_PRI,
-		__gd32_exti_isr_15_10, DEVICE_GET(exti_gd32),
+	IRQ_CONNECT(EXTI10_15_IRQn,
+		CONFIG_EXTI_GD32_EXTI10_15_IRQ_PRI,
+		__gd32_exti_isr_10_15, DEVICE_GET(exti_gd32),
 		0);
-#else
-	IRQ_CONNECT(EXTI5_IRQn,
-		CONFIG_EXTI_GD32_EXTI5_IRQ_PRI,
-		__gd32_exti_isr_5, DEVICE_GET(exti_gd32),
-		0);
-	IRQ_CONNECT(EXTI6_IRQn,
-		CONFIG_EXTI_GD32_EXTI6_IRQ_PRI,
-		__gd32_exti_isr_6, DEVICE_GET(exti_gd32),
-		0);
-	IRQ_CONNECT(EXTI7_IRQn,
-		CONFIG_EXTI_GD32_EXTI7_IRQ_PRI,
-		__gd32_exti_isr_7, DEVICE_GET(exti_gd32),
-		0);
-	IRQ_CONNECT(EXTI8_IRQn,
-		CONFIG_EXTI_GD32_EXTI8_IRQ_PRI,
-		__gd32_exti_isr_8, DEVICE_GET(exti_gd32),
-		0);
-	IRQ_CONNECT(EXTI9_IRQn,
-		CONFIG_EXTI_GD32_EXTI9_IRQ_PRI,
-		__gd32_exti_isr_9, DEVICE_GET(exti_gd32),
-		0);
-	IRQ_CONNECT(EXTI10_IRQn,
-		CONFIG_EXTI_GD32_EXTI10_IRQ_PRI,
-		__gd32_exti_isr_10, DEVICE_GET(exti_gd32),
-		0);
-	IRQ_CONNECT(EXTI11_IRQn,
-		CONFIG_EXTI_GD32_EXTI11_IRQ_PRI,
-		__gd32_exti_isr_11, DEVICE_GET(exti_gd32),
-		0);
-	IRQ_CONNECT(EXTI12_IRQn,
-		CONFIG_EXTI_GD32_EXTI12_IRQ_PRI,
-		__gd32_exti_isr_12, DEVICE_GET(exti_gd32),
-		0);
-	IRQ_CONNECT(EXTI13_IRQn,
-		CONFIG_EXTI_GD32_EXTI13_IRQ_PRI,
-		__gd32_exti_isr_13, DEVICE_GET(exti_gd32),
-		0);
-	IRQ_CONNECT(EXTI14_IRQn,
-		CONFIG_EXTI_GD32_EXTI14_IRQ_PRI,
-		__gd32_exti_isr_14, DEVICE_GET(exti_gd32),
-		0);
-	IRQ_CONNECT(EXTI15_IRQn,
-		CONFIG_EXTI_GD32_EXTI15_IRQ_PRI,
-		__gd32_exti_isr_15, DEVICE_GET(exti_gd32),
-		0);
-#endif /* CONFIG_SOC_SERIES_GD32MP1X */
-
-#if defined(CONFIG_SOC_SERIES_GD32F2X) || \
-	defined(CONFIG_SOC_SERIES_GD32F4X) || \
-	defined(CONFIG_SOC_SERIES_GD32F7X)
-	IRQ_CONNECT(PVD_IRQn,
-		CONFIG_EXTI_GD32_PVD_IRQ_PRI,
-		__gd32_exti_isr_16, DEVICE_GET(exti_gd32),
-		0);
-	IRQ_CONNECT(OTG_FS_WKUP_IRQn,
-		CONFIG_EXTI_GD32_OTG_FS_WKUP_IRQ_PRI,
-		__gd32_exti_isr_18, DEVICE_GET(exti_gd32),
-		0);
-	IRQ_CONNECT(TAMP_STAMP_IRQn,
-		CONFIG_EXTI_GD32_TAMP_STAMP_IRQ_PRI,
-		__gd32_exti_isr_21, DEVICE_GET(exti_gd32),
-		0);
-	IRQ_CONNECT(RTC_WKUP_IRQn,
-		CONFIG_EXTI_GD32_RTC_WKUP_IRQ_PRI,
-		__gd32_exti_isr_22, DEVICE_GET(exti_gd32),
-		0);
-#endif
-#if CONFIG_SOC_SERIES_GD32F7X
-	IRQ_CONNECT(LPTIM1_IRQn,
-		CONFIG_EXTI_GD32_LPTIM1_IRQ_PRI,
-		__gd32_exti_isr_23, DEVICE_GET(exti_gd32),
-		0);
-#endif /* CONFIG_SOC_SERIES_GD32F7X */
-#endif
+*/
 }
