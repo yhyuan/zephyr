@@ -11,26 +11,53 @@ config EXTI_GD32
 	help
 	  Enable EXTI driver for GD32 line of MCUs
 
-config EXTI_GD32_EXTI1_0_IRQ_PRI
-	int "EXTI1:0 IRQ priority"
+config EXTI_GD32_EXTI0_IRQ_PRI
+	int "EXTI0 IRQ priority"
 	depends on EXTI_GD32
 	default 0
 	help
 	  IRQ priority of EXTI1:0 interrupt
 
-config EXTI_GD32_EXTI3_2_IRQ_PRI
-	int "EXTI3:2 IRQ priority"
+config EXTI_GD32_EXTI1_IRQ_PRI
+	int "EXTI1 IRQ priority"
+	depends on EXTI_GD32
+	default 0
+	help
+	  IRQ priority of EXTI1:0 interrupt
+
+config EXTI_GD32_EXTI2_IRQ_PRI
+	int "EXTI2 IRQ priority"
+	depends on EXTI_GD32
+	default 0
+	help
+	  IRQ priority of EXTI3 interrupt
+
+config EXTI_GD32_EXTI3_IRQ_PRI
+	int "EXTI3 IRQ priority"
 	depends on EXTI_GD32
 	default 0
 	help
 	  IRQ priority of EXTI3:2 interrupt
 
-config EXTI_GD32_EXTI15_4_IRQ_PRI
-	int "EXTI15:4 IRQ priority"
+config EXTI_GD32_EXTI4_IRQ_PRI
+	int "EXTI4 IRQ priority"
 	depends on EXTI_GD32
 	default 0
 	help
-	  IRQ priority of EXTI15:4 interrupt
+	  IRQ priority of EXTI4 interrupt
 
+config EXTI_GD32_EXTI5_9_IRQ_PRI
+	int "EXTI5:9 IRQ priority"
+	depends on EXTI_GD32
+	default 0
+	help
+	  IRQ priority of EXTI5:9 interrupt
+
+config EXTI_GD32_EXTI10_15_IRQ_PRI
+	int "EXTI10:15 IRQ priority"
+	depends on EXTI_GD32
+	default 0
+	help
+	  IRQ priority of EXTI10:15 interrupt
 
 endif # SOC_FAMILY_GD32

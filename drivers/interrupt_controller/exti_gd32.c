@@ -279,7 +279,7 @@ void gd32_exti_unset_callback(int line)
 static void __gd32_exti_connect_irqs(struct device *dev)
 {
 	ARG_UNUSED(dev);
-/*
+
 	IRQ_CONNECT(EXTI0_IRQn,
 		CONFIG_EXTI_GD32_EXTI0_IRQ_PRI,
 		__gd32_exti_isr_0, DEVICE_GET(exti_gd32),
@@ -308,5 +308,5 @@ static void __gd32_exti_connect_irqs(struct device *dev)
 		CONFIG_EXTI_GD32_EXTI10_15_IRQ_PRI,
 		__gd32_exti_isr_10_15, DEVICE_GET(exti_gd32),
 		0);
-*/
+
 }
