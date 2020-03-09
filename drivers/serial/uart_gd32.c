@@ -639,6 +639,7 @@ static int uart_gd32_init(struct device *dev)
 	u32_t regs = DEV_REGS(dev);
 
 	__uart_gd32_get_clock(dev);
+	rcu_periph_clock_enable(RCU_GPIOA);
 	/* enable clock */
 	if (clock_control_on(data->clock,
 			(clock_control_subsys_t *)&config->pclken) != 0) {
