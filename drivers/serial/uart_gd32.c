@@ -378,13 +378,14 @@ static void uart_gd32_poll_out(struct device *dev,
 {
 	u32_t regs = DEV_REGS(dev);
 
+	usart_flag_clear(regs, USART_FLAG_TC);
+
+	usart_data_transmit(regs, (u8_t) c );
+
 	/* Wait for TXE flag to be raised */
 	while (!usart_flag_get(regs, USART_FLAG_TBE)) {
 	}
 
-	usart_flag_clear(regs, USART_FLAG_TC);
-
-	usart_data_transmit(regs, (u8_t) c );
 }
 
 static int uart_gd32_err_check(struct device *dev)
@@ -665,11 +666,11 @@ static int uart_gd32_init(struct device *dev)
 
 	/* Set the default baudrate */
 	uart_gd32_set_baudrate(dev, data->baud_rate);
-	usart_flag_clear(regs, USART_FLAG_TC);
-	while(usart_interrupt_flag_get(regs, USART_INT_FLAG_TBE));
-	while(usart_interrupt_flag_get(regs, USART_INT_FLAG_RBNE)) {
-		usart_data_receive(regs);
-	}
+	//usart_flag_clear(regs, USART_FLAG_TC);
+	//while(usart_interrupt_flag_get(regs, USART_INT_FLAG_TBE));
+	//while(usart_interrupt_flag_get(regs, USART_INT_FLAG_RBNE)) {
+	//	usart_data_receive(regs);
+	//}
 
 	usart_enable(regs);
 
