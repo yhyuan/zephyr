@@ -454,6 +454,7 @@ static int uart_gd32_fifo_fill(struct device *dev, const u8_t *tx_data,
 
 		/* Send a character (8bit , parity none) */
 		usart_data_transmit(regs, tx_data[num_tx++]);
+		while (!usart_flag_get(regs, USART_FLAG_TBE));
 	}
 
 	return num_tx;
@@ -666,11 +667,6 @@ static int uart_gd32_init(struct device *dev)
 
 	/* Set the default baudrate */
 	uart_gd32_set_baudrate(dev, data->baud_rate);
-	//usart_flag_clear(regs, USART_FLAG_TC);
-	//while(usart_interrupt_flag_get(regs, USART_INT_FLAG_TBE));
-	//while(usart_interrupt_flag_get(regs, USART_INT_FLAG_RBNE)) {
-	//	usart_data_receive(regs);
-	//}
 
 	usart_enable(regs);
 
