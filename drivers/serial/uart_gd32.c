@@ -484,14 +484,14 @@ static void uart_gd32_irq_tx_enable(struct device *dev)
 {
 	u32_t regs = DEV_REGS(dev);
 
-	usart_interrupt_enable(regs, USART_INT_TC);
+	usart_interrupt_enable(regs, USART_INT_TBE);
 }
 
 static void uart_gd32_irq_tx_disable(struct device *dev)
 {
 	u32_t regs = DEV_REGS(dev);
 
-	usart_interrupt_disable(regs, USART_INT_TC);
+	usart_interrupt_disable(regs, USART_INT_TBE);
 }
 
 static int uart_gd32_irq_tx_ready(struct device *dev)
@@ -593,9 +593,6 @@ static void uart_gd32_isr(void *arg)
 	}
 }
 
-void USART0_IRQHandler() {
-	uart_gd32_isr(NULL);
-}
 #endif /* CONFIG_UART_INTERRUPT_DRIVEN */
 
 static const struct uart_driver_api uart_gd32_driver_api = {
@@ -651,8 +648,6 @@ static int uart_gd32_init(struct device *dev)
     /* connect port to USARTx_Rx */
     gpio_init(GPIOA, GPIO_MODE_IN_FLOATING, GPIO_OSPEED_50MHZ, GPIO_PIN_10);
 
-
-
 	usart_deinit(regs);
 
 	/* TX/RX direction */
@@ -670,6 +665,11 @@ static int uart_gd32_init(struct device *dev)
 
 	/* Set the default baudrate */
 	uart_gd32_set_baudrate(dev, data->baud_rate);
+	usart_flag_clear(regs, USART_FLAG_TC);
+	while(usart_interrupt_flag_get(regs, USART_INT_FLAG_TBE));
+	while(usart_interrupt_flag_get(regs, USART_INT_FLAG_RBNE)) {
+		usart_data_receive(regs);
+	}
 
 	usart_enable(regs);
 
