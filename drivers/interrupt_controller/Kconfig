@@ -65,4 +65,6 @@ source "drivers/interrupt_controller/Kconfig.sam0"
 
 source "drivers/interrupt_controller/Kconfig.gic"
 
+source "drivers/interrupt_controller/Kconfig.gd32"
+
 endmenu
