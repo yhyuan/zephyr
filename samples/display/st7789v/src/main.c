@@ -31,7 +31,7 @@ void main(void)
 	const size_t rgb_size = 3;
 #endif
 
-	display_dev = device_get_binding(DT_INST_0_SITRONIX_ST7789V_LABEL);
+	display_dev = device_get_binding(DT_INST_0_SITRONIX_ST7735S_LABEL);
 
 	if (display_dev == NULL) {
 		LOG_ERR("Device not found. Aborting test.");
@@ -97,7 +97,7 @@ void main(void)
 		/* Update the color of the rectangle buffer and write the buffer
 		 * to  one of the corners
 		 */
-#ifdef CONFIG_ST7789V_RGB565
+#ifdef CONFIG_ST7735S_RGB565
 		int color = cnt % 4;
 		/* RGB565 format */
 		u16_t color_r;
