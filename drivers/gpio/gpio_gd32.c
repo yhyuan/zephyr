@@ -176,6 +176,16 @@ static int gpio_gd32_enable_int(int port, int pin)
 	return 0;
 }
 
+static int gpio_gd32_port_get_raw(struct device *dev, u32_t *value)
+{
+	const struct gpio_gd32_config *cfg = dev->config->config_info;
+	GPIO_TypeDef *gpio = (GPIO_TypeDef *)cfg->base;
+
+	*value = LL_GPIO_ReadInputPort(gpio);
+
+	return 0;
+}
+
 /**
  * @brief Get enabled GPIO port for EXTI of the specific pin number
  */
@@ -191,49 +201,36 @@ static int gpio_gd32_int_enabled_port(int pin)
 /**
  * @brief Configure pin or port
  */
-static int gpio_gd32_config(struct device *dev, int access_op,
-			     u32_t pin, int flags)
+static int gpio_gd32_config(struct device *dev,
+			     gpio_pin_t pin, gpio_flags_t flags)
 {
 	const struct gpio_gd32_config *cfg = dev->config->config_info;
 	int err = 0;
 	int pincfg = 0;
-	int map_res;
 
-	if (access_op != GPIO_ACCESS_BY_PIN) {
-		return -ENOTSUP;
-	}
-
-	if ((flags & GPIO_POL_MASK) == GPIO_POL_INV) {
-		/* hardware cannot invert signal */
-		return -ENOTSUP;
-	}
 
 	/* figure out if we can map the requested GPIO
 	 * configuration
 	 */
-	map_res = gpio_gd32_flags_to_conf(flags, &pincfg);
-	if (map_res != 0) {
-		err = map_res;
+	err = gpio_gd32_flags_to_conf(flags, &pincfg);
+	if (err != 0) {
 		goto release_lock;
 	}
 
-	if (gpio_gd32_configure(cfg->base, pin, pincfg, 0) != 0) {
-		err = -EIO;
-		goto release_lock;
-	}
-
-	if (!IS_ENABLED(CONFIG_EXTI_GD32)) {
-		goto release_lock;
-	}
-
-	if (flags & GPIO_INT) {
-		if (gd32_exti_set_callback(pin, cfg->port,
-					    gpio_gd32_isr, dev) != 0) {
-			err = -EBUSY;
-			goto release_lock;
+	if ((flags & GPIO_OUTPUT) != 0) {
+		if ((flags & GPIO_OUTPUT_INIT_HIGH) != 0) {
+			gpio_gd32_port_set_bits_raw(dev, BIT(pin));
+		} else if ((flags & GPIO_OUTPUT_INIT_LOW) != 0) {
+			gpio_gd32_port_clear_bits_raw(dev, BIT(pin));
 		}
+	}
 
-		gpio_gd32_enable_int(cfg->port, pin);
+	gpio_gd32_configure(cfg->base, pin, pincfg, 0);
+
+release_lock:
+
+	return err;
+}
 
 		if ((flags & GPIO_INT_EDGE) != 0) {
 			int edge = 0;
@@ -321,13 +318,9 @@ static int gpio_gd32_manage_callback(struct device *dev,
 }
 
 static int gpio_gd32_enable_callback(struct device *dev,
-				      int access_op, u32_t pin)
+				      gpio_pin_t pin)
 {
 	struct gpio_gd32_data *data = dev->driver_data;
-
-	if (access_op != GPIO_ACCESS_BY_PIN) {
-		return -ENOTSUP;
-	}
 
 	data->cb_pins |= BIT(pin);
 
@@ -335,13 +328,9 @@ static int gpio_gd32_enable_callback(struct device *dev,
 }
 
 static int gpio_gd32_disable_callback(struct device *dev,
-				       int access_op, u32_t pin)
+				       gpio_pin_t pin)
 {
 	struct gpio_gd32_data *data = dev->driver_data;
-
-	if (access_op != GPIO_ACCESS_BY_PIN) {
-		return -ENOTSUP;
-	}
 
 	data->cb_pins &= ~BIT(pin);
 
@@ -349,7 +338,8 @@ static int gpio_gd32_disable_callback(struct device *dev,
 }
 
 static const struct gpio_driver_api gpio_gd32_driver = {
-	.config = gpio_gd32_config,
+	.pin_configure = gpio_gd32_config,
+	.port_get_raw = gpio_gd32_port_get_raw,
 	.write = gpio_gd32_write,
 	.read = gpio_gd32_read,
 	.manage_callback = gpio_gd32_manage_callback,
@@ -386,12 +376,12 @@ static int gpio_gd32_init(struct device *device)
 
 #define GPIO_DEVICE_INIT(__name, __suffix, __base_addr, __port, __cenr, __bus) \
 	static const struct gpio_gd32_config gpio_gd32_cfg_## __suffix = {   \
+		.common = {						       \
+			 .port_pin_mask = GPIO_PORT_PIN_MASK_FROM_NGPIOS(16U),		       \
+		},							       \
 		.base = (u32_t *)__base_addr,				       \
 		.port = __port - GD32_PORTA,				       \
-		.pclken = {                                                    \
-			.enr = __cenr,                                         \
-			.bus = __bus,                                          \
-		}                                                              \
+		.pclken = { .bus = __bus, .enr = __cenr }		       \
 	};								       \
 	static struct gpio_gd32_data gpio_gd32_data_## __suffix;	       \
 	DEVICE_AND_API_INIT(gpio_gd32_## __suffix,			       \
