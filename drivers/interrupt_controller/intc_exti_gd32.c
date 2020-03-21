@@ -54,30 +54,46 @@ static void exti_enable_interrupt(exti_line_enum linex)
     EXTI_INTEN |= (uint32_t) linex;
 }
 
-int gd32_exti_enable(int line)
+static void exti_set_rising_trigger(exti_line_enum linex)
+{
+        EXTI_RTEN |= (uint32_t) linex;
+}
+
+static void exti_reset_rising_trigger(exti_line_enum linex)
+{
+        EXTI_RTEN &= ~(uint32_t) linex;
+}
+
+static void exti_set_falling_trigger(exti_line_enum linex)
+{
+        EXTI_FTEN |= (uint32_t) linex;
+}
+
+static void exti_reset_falling_trigger(exti_line_enum linex)
+{
+        EXTI_FTEN &= ~(uint32_t) linex;
+}
+
+
+void gd32_exti_enable(int line)
 {
 	int irqnum = 0;
 
-	/* Enable requested line interrupt */
-	if (line < 32) {
-		exti_enable_interrupt(1 << line);
-	} else {
+	if (line >= ARRAY_SIZE(exti_irq_table)) {
 		__ASSERT_NO_MSG(line);
 	}
 
-	/* Get matching exti irq mathcing provided line thanks to irq_table */
-	if (line < ARRAY_SIZE(exti_irq_table)) {
-		irqnum = exti_irq_table[line];
-		if (irqnum == 0xFF)
-			return 0;
-	} else {
-		return -ENOTSUP;
+	/* Get matching exti irq provided line thanks to irq_table */
+	irqnum = exti_irq_table[line];
+	if (irqnum == 0xFF) {
+		__ASSERT_NO_MSG(line);
 	}
+
+	/* Enable requested line interrupt */
+	exti_enable_interrupt(1 << line);
 
 	/* Enable exti irq interrupt */
 	irq_enable(irqnum);
-
-	return 0;
 }
 
 void gd32_exti_disable(int line)
@@ -85,9 +101,7 @@ void gd32_exti_disable(int line)
 	if (line < 32) {
 		exti_interrupt_disable(1 << line);
 	} else {
-
 		__ASSERT_NO_MSG(line);
-
 	}
 }
 
@@ -106,22 +120,6 @@ static inline int gd32_exti_is_pending(int line)
 	}
 }
 
-static void exti_reset_trigger(exti_line_enum linex)
-{
-        EXTI_FTEN &= ~(uint32_t) linex;
-        EXTI_RTEN &= ~(uint32_t) linex;
-}
-
-static void exti_set_rising_trigger(exti_line_enum linex)
-{
-        EXTI_RTEN |= (uint32_t) linex;
-}
-
-static void exti_set_falling_trigger(exti_line_enum linex)
-{
-        EXTI_FTEN |= (uint32_t) linex;
-}
-
 /**
  * @brief clear pending interrupt bit
  *
@@ -138,20 +136,30 @@ static inline void gd32_exti_clear_pending(int line)
 
 void gd32_exti_trigger(int line, int trigger)
 {
-	if (trigger & GD32_EXTI_TRIG_RISING) {
-		if (line < 32) {
-			exti_set_rising_trigger(1 << line);
-		} else {
-			__ASSERT_NO_MSG(line);
-		}
+
+	if (line >= 32) {
+		__ASSERT_NO_MSG(line);
 	}
 
-	if (trigger & GD32_EXTI_TRIG_FALLING) {
-		if (line < 32) {
-			exti_set_falling_trigger(1 << line);
-		} else {
-			__ASSERT_NO_MSG(line);
-		}
+	switch (trigger) {
+	case EXTI_TRIG_NONE:
+		exti_reset_rising_trigger(1 << line);
+		exti_reset_falling_trigger(1 << line);
+		break;
+	case EXTI_TRIG_RISING:
+		exti_set_rising_trigger(1 << line);
+		exti_reset_falling_trigger(1 << line);
+		break;
+	case EXTI_TRIG_FALLING:
+		exti_reset_rising_trigger(1 << line);
+		exti_set_falling_trigger(1 << line);
+		break;
+	case EXTI_TRIG_BOTH:
+		exti_set_rising_trigger(1 << line);
+		exti_set_falling_trigger(1 << line);
+		break;
+	default:
+		__ASSERT_NO_MSG(trigger);
 	}
 }
 
@@ -217,28 +225,8 @@ static inline void __gd32_exti_isr_5_9(void *arg)
 	__gd32_exti_isr(5, 10, arg);
 }
 
-#define LED_PORT	DT_ALIAS_LED0_GPIOS_CONTROLLER
-#define LED		DT_ALIAS_LED0_GPIOS_PIN
-
-int flagx=0;
-
-#include <drivers/gpio.h>
-
 static inline void __gd32_exti_isr_10_15(void *arg)
 {
-#if 0
-	//printk("Button pressed at %" PRIu32 "\n", k_cycle_get_32());
-	printk("pressed\n");
-    if (RESET != exti_interrupt_flag_get(GPIO_PIN_13)){
-        exti_interrupt_flag_clear(GPIO_PIN_13);
-
-        //if(RESET != gd_eval_key_state_get(GPIO_PIN_13)){
-            //gd_eval_led_toggle(LED3);
-        //}
-	gpio_bit_write(GPIOC, GPIO_PIN_13, 
-        (bit_status)(1-gpio_input_bit_get(GPIOC, GPIO_PIN_13)));
-    }
-#endif
 	__gd32_exti_isr(10, 16, arg);
 }
 
@@ -262,8 +250,7 @@ DEVICE_INIT(exti_gd32, GD32_EXTI_NAME, gd32_exti_init,
 /**
  * @brief set & unset for the interrupt callbacks
  */
-int gd32_exti_set_callback(int line, int port, gd32_exti_callback_t cb,
-				void *arg)
+int gd32_exti_set_callback(int line, gd32_exti_callback_t cb, void *arg)
 {
 	struct device *dev = DEVICE_GET(exti_gd32);
 	struct gd32_exti_data *data = dev->driver_data;
