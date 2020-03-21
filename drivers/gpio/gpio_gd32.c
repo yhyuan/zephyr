@@ -46,26 +46,27 @@ static void gpio_gd32_isr(int line, void *arg)
  */
 const int gpio_gd32_flags_to_conf(int flags, int *pincfg)
 {
-	int direction = flags & GPIO_DIR_MASK;
-	int pud = flags & GPIO_PUD_MASK;
 
-	if (pincfg == NULL) {
-		return -EINVAL;
-	}
+	if ((flags & GPIO_OUTPUT) != 0) {
+		/* Output only or Output/Input */
 
-	if (direction == GPIO_DIR_OUT) {
 		*pincfg = GPIO_MODE_OUT_PP | GPIO_OSPEED_50MHZ;
-	} else {
-		/* pull-{up,down} maybe? */
-		//*pincfg = GD32_PINCFG_MODE_INPUT;
-		if (pud == GPIO_PUD_PULL_UP) {
+
+	} else if  ((flags & GPIO_INPUT) != 0) {
+		/* Input */
+
+
+
+		if ((flags & GPIO_PULL_UP) != 0) {
 			*pincfg |= GPIO_MODE_IPU;
-		} else if (pud == GPIO_PUD_PULL_DOWN) {
+		} else if ((flags & GPIO_PULL_DOWN) != 0) {
 			*pincfg |= GPIO_MODE_IPD;
 		} else {
-			/* floating */
 			*pincfg |= GPIO_MODE_IN_FLOATING;
 		}
+	} else {
+		/* Desactivated: Analog */
+		*pincfg = GPIO_MODE_IN_FLOATING;
 	}
 
 	return 0;
@@ -91,6 +92,7 @@ static int gpio_gd32_configure(u32_t *base_addr, int pin, int conf, int altf)
 
 	int pin_ll = gd32_pinval_get(pin);
 
+
 	ARG_UNUSED(altf);
 
 	u32_t temp = conf & (GD32_MODE_INOUT_MASK << GD32_MODE_INOUT_SHIFT);
@@ -103,6 +105,8 @@ static int gpio_gd32_configure(u32_t *base_addr, int pin, int conf, int altf)
 		} else if (temp == GD32_CNF_IN_FLOAT) {
 			gpio_init(gpio, GPIO_MODE_IN_FLOATING, 0, pin_ll);
 		} else {
+
+
 			temp = conf & (GD32_PUPD_MASK << GD32_PUPD_SHIFT);
 
 			if (temp == GD32_PUPD_PULL_UP) {
@@ -167,9 +171,6 @@ static int gpio_gd32_get_exti_source(int pin)
  */
 static int gpio_gd32_enable_int(int port, int pin)
 {
-	if (pin > 15) {
-		return -EINVAL;
-	}
 
 	gpio_gd32_set_exti_source(port, pin);
 
@@ -179,23 +180,58 @@ static int gpio_gd32_enable_int(int port, int pin)
 static int gpio_gd32_port_get_raw(struct device *dev, u32_t *value)
 {
 	const struct gpio_gd32_config *cfg = dev->config->config_info;
-	GPIO_TypeDef *gpio = (GPIO_TypeDef *)cfg->base;
+	uint32_t gpio = (uint32_t)cfg->base;
 
-	*value = LL_GPIO_ReadInputPort(gpio);
+	*value = gpio_input_port_get(gpio);
 
 	return 0;
 }
 
-/**
- * @brief Get enabled GPIO port for EXTI of the specific pin number
- */
-static int gpio_gd32_int_enabled_port(int pin)
+static int gpio_gd32_port_set_masked_raw(struct device *dev,
+					  gpio_port_pins_t mask,
+					  gpio_port_value_t value)
 {
-	if (pin > 15) {
-		return -EINVAL;
-	}
+	const struct gpio_gd32_config *cfg = dev->config->config_info;
+	uint32_t gpio = (uint32_t)cfg->base;
+	u32_t port_value;
 
-	return gpio_gd32_get_exti_source(pin);
+	port_value = gpio_output_port_get(gpio);
+	gpio_port_write(gpio, (port_value & ~mask) | (mask & value));
+
+	return 0;
+}
+
+static int gpio_gd32_port_set_bits_raw(struct device *dev,
+					gpio_port_pins_t pins)
+{
+	const struct gpio_gd32_config *cfg = dev->config->config_info;
+	uint32_t gpio = (uint32_t)cfg->base;
+
+	gpio_bit_set(gpio, pins);
+
+	return 0;
+}
+
+static int gpio_gd32_port_clear_bits_raw(struct device *dev,
+					  gpio_port_pins_t pins)
+{
+	const struct gpio_gd32_config *cfg = dev->config->config_info;
+	uint32_t gpio = (uint32_t)cfg->base;
+
+	gpio_bit_reset(gpio, pins);
+
+	return 0;
+}
+
+static int gpio_gd32_port_toggle_bits(struct device *dev,
+				       gpio_port_pins_t pins)
+{
+	const struct gpio_gd32_config *cfg = dev->config->config_info;
+	uint32_t gpio = (uint32_t)cfg->base;
+
+	gpio_bit_set(gpio, gpio_output_port_get(gpio) ^ pins);
+
+	return 0;
 }
 
 /**
@@ -206,7 +242,7 @@ static int gpio_gd32_config(struct device *dev,
 {
 	const struct gpio_gd32_config *cfg = dev->config->config_info;
 	int err = 0;
-	int pincfg = 0;
+	int pincfg;
 
 
 	/* figure out if we can map the requested GPIO
@@ -232,80 +268,59 @@ release_lock:
 	return err;
 }
 
-		if ((flags & GPIO_INT_EDGE) != 0) {
-			int edge = 0;
+static int gpio_gd32_pin_interrupt_configure(struct device *dev,
+		gpio_pin_t pin, enum gpio_int_mode mode,
+		enum gpio_int_trig trig)
+{
+	const struct gpio_gd32_config *cfg = dev->config->config_info;
+	struct gpio_gd32_data *data = dev->driver_data;
+	int edge = 0;
+	int err = 0;
 
-			if ((flags & GPIO_INT_DOUBLE_EDGE) != 0) {
-				edge = GD32_EXTI_TRIG_RISING |
-				       GD32_EXTI_TRIG_FALLING;
-			} else if ((flags & GPIO_INT_ACTIVE_HIGH) != 0) {
-				edge = GD32_EXTI_TRIG_RISING;
-			} else {
-				edge = GD32_EXTI_TRIG_FALLING;
-			}
-
-			gd32_exti_trigger(pin, edge);
-		} else {
-			/* Level trigger interrupts not supported */
-			err = -ENOTSUP;
-			goto release_lock;
-		}
-
-		if (gd32_exti_enable(pin) != 0) {
-			err = -EIO;
-			goto release_lock;
-		}
-	} else {
-		if (gpio_gd32_int_enabled_port(pin) == cfg->port) {
+	if (mode == GPIO_INT_MODE_DISABLED) {
+		if (gpio_gd32_get_exti_source(pin) == cfg->port) {
 			gd32_exti_disable(pin);
 			gd32_exti_unset_callback(pin);
+			gd32_exti_trigger(pin, EXTI_TRIG_NONE);
+			data->cb_pins &= ~BIT(pin);
 		}
+		/* else: No irq source configured for pin. Nothing to disable */
+		goto release_lock;
 	}
+
+	/* Level trigger interrupts not supported */
+	if (mode == GPIO_INT_MODE_LEVEL) {
+		err = -ENOTSUP;
+		goto release_lock;
+	}
+
+	if (gd32_exti_set_callback(pin, gpio_gd32_isr, dev) != 0) {
+		err = -EBUSY;
+		goto release_lock;
+	}
+
+	data->cb_pins |= BIT(pin);
+
+	gpio_gd32_enable_int(cfg->port, pin);
+
+	switch (trig) {
+	case GPIO_INT_TRIG_LOW:
+		edge = EXTI_TRIG_FALLING;
+		break;
+	case GPIO_INT_TRIG_HIGH:
+		edge = EXTI_TRIG_RISING;
+		break;
+	case GPIO_INT_TRIG_BOTH:
+		edge = EXTI_TRIG_BOTH;
+		break;
+	}
+
+	gd32_exti_trigger(pin, edge);
+
+	gd32_exti_enable(pin);
 
 release_lock:
-
 	return err;
-}
-
-/**
- * @brief Set the pin or port output
- */
-static int gpio_gd32_write(struct device *dev, int access_op,
-			    u32_t pin, u32_t value)
-{
-	const struct gpio_gd32_config *cfg = dev->config->config_info;
-	uint32_t gpio = (uint32_t)cfg->base;
-
-	if (access_op != GPIO_ACCESS_BY_PIN) {
-		return -ENOTSUP;
-	}
-
-	pin = gd32_pinval_get(pin);
-	if (value != 0U) {
-		gpio_bit_set(gpio, pin);
-	} else {
-		gpio_bit_reset(gpio, pin);
-	}
-
-	return 0;
-}
-
-/**
- * @brief Read the pin or port status
- */
-static int gpio_gd32_read(struct device *dev, int access_op,
-			   u32_t pin, u32_t *value)
-{
-	const struct gpio_gd32_config *cfg = dev->config->config_info;
-	uint32_t gpio = (uint32_t)cfg->base;
-
-	if (access_op != GPIO_ACCESS_BY_PIN) {
-		return -ENOTSUP;
-	}
-
-	*value = (gpio_input_port_get(gpio) >> pin) & 0x1;
-
-	return 0;
 }
 
 static int gpio_gd32_manage_callback(struct device *dev,
@@ -340,8 +355,11 @@ static int gpio_gd32_disable_callback(struct device *dev,
 static const struct gpio_driver_api gpio_gd32_driver = {
 	.pin_configure = gpio_gd32_config,
 	.port_get_raw = gpio_gd32_port_get_raw,
-	.write = gpio_gd32_write,
-	.read = gpio_gd32_read,
+	.port_set_masked_raw = gpio_gd32_port_set_masked_raw,
+	.port_set_bits_raw = gpio_gd32_port_set_bits_raw,
+	.port_clear_bits_raw = gpio_gd32_port_clear_bits_raw,
+	.port_toggle_bits = gpio_gd32_port_toggle_bits,
+	.pin_interrupt_configure = gpio_gd32_pin_interrupt_configure,
 	.manage_callback = gpio_gd32_manage_callback,
 	.enable_callback = gpio_gd32_enable_callback,
 	.disable_callback = gpio_gd32_disable_callback,
