@@ -66,20 +66,7 @@ static inline u32_t pin_to_bit(u32_t pin)
 
 static int pinmux_gd32_set(struct device *dev, u32_t pin, u32_t flags)
 {
-	int pincfg = 0;
-
 	ARG_UNUSED(dev);
-#if 0
-	const struct gpio_gd32_config *cfg = dev->config->config_info;
-	/* enable clock for subsystem */
-	struct device *clk =
-		device_get_binding(GD32_CLOCK_CONTROL_NAME);
-
-	if (clock_control_on(clk,
-			     (clock_control_subsys_t *)&cfg->pclken) != 0) {
-		return -EIO;
-	}
-#endif
 
 	gpio_init(pin_to_base(pin), gpio_mode_with_af(flags), gpio_speed(flags), pin_to_bit(pin)) ;
 
