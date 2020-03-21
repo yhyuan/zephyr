@@ -9,4 +9,11 @@ config BOARD
 	default "sipeed_longan_nano" if BOARD_SIPEED_LONGAN_NANO
 	default "sipeed_longan_nano_lite" if BOARD_SIPEED_LONGAN_NANO_LITE
 
+if UART_CONSOLE
+
+config UART_0
+	default y
+
+endif # UART_CONSOLE
+
 endif # BOARD_SIPEED_LONGAN_NANO
