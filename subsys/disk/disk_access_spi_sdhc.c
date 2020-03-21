@@ -26,7 +26,6 @@ LOG_MODULE_REGISTER(sdhc_spi, CONFIG_DISK_LOG_LEVEL);
 struct sdhc_spi_data {
 	struct device *spi;
 	struct spi_config cfg;
-
 	struct spi_cs_control cs_ctrl;
 	gpio_dt_flags_t flags;
 
@@ -72,7 +71,7 @@ static int sdhc_spi_trace(struct sdhc_spi_data *data, int dir, int err,
 /* Asserts or deasserts chip select */
 static void sdhc_spi_set_cs(struct sdhc_spi_data *data, int value)
 {
-	gpio_pin_write(data->cs_ctrl.gpio_dev, data->cs_ctrl.gpio_pin, value);
+	gpio_pin_set(data->cs_ctrl.gpio_dev, data->cs_ctrl.gpio_pin, value);
 }
 
 /* Receives a fixed number of bytes */
@@ -771,18 +770,18 @@ static int sdhc_spi_init(struct device *dev)
 	data->cfg.frequency = SDHC_SPI_INITIAL_SPEED;
 	data->cfg.operation = SPI_WORD_SET(8) | SPI_HOLD_ON_CS;
 	data->cfg.slave = DT_INST_0_ZEPHYR_MMC_SPI_SLOT_BASE_ADDRESS;
-	data->cfg.cs = &data->cs_ctrl;
-
 	data->cs_ctrl.gpio_dev = device_get_binding(
 		DT_INST_0_ZEPHYR_MMC_SPI_SLOT_CS_GPIOS_CONTROLLER);
 	__ASSERT_NO_MSG(data->cs_ctrl.gpio_dev != NULL);
 
+	data->cfg.cs = &data->cs_ctrl;
+	data->cs_ctrl.delay = 0;
 	data->cs_ctrl.gpio_pin = DT_INST_0_ZEPHYR_MMC_SPI_SLOT_CS_GPIOS_PIN;
-	data->cs_ctrl.delay = DT_INST_0_ZEPHYR_MMC_SPI_SLOT_CS_GPIOS_FLAGS;
+	data->flags = DT_INST_0_ZEPHYR_MMC_SPI_SLOT_CS_GPIOS_FLAGS;
 
 	disk_spi_sdhc_init(dev);
 
-	return gpio_pin_configure(data->cs_ctrl.gpio_dev, data->cs_ctrl.gpio_pin, 
+	return gpio_pin_configure(data->cs_ctrl.gpio_dev, data->cs_ctrl.gpio_pin,
 				  GPIO_OUTPUT_INACTIVE | data->flags);
 }
 
