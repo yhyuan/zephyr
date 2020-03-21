@@ -176,7 +176,7 @@ typedef enum IRQn
 
 /* enum definitions */
 typedef enum {DISABLE = 0, ENABLE = !DISABLE} EventStatus, ControlStatus;
-typedef enum {FALSE = 0, TRUE = !FALSE} bool;
+//typedef enum {FALSE = 0, TRUE = !FALSE} bool;
 typedef enum {RESET = 0, SET = 1,MAX = 0X7FFFFFFF} FlagStatus;
 typedef enum {ERROR = 0, SUCCESS = !ERROR} ErrStatus;
 
@@ -184,7 +184,9 @@ typedef enum {ERROR = 0, SUCCESS = !ERROR} ErrStatus;
 #define REG32(addr)                  (*(volatile uint32_t *)(uint32_t)(addr))
 #define REG16(addr)                  (*(volatile uint16_t *)(uint32_t)(addr))
 #define REG8(addr)                   (*(volatile uint8_t *)(uint32_t)(addr))
+#ifndef BIT
 #define BIT(x)                       ((uint32_t)((uint32_t)0x01U<<(x)))
+#endif
 #define BITS(start, end)             ((0xFFFFFFFFUL << (start)) & (0xFFFFFFFFUL >> (31U - (uint32_t)(end)))) 
 #define GET_BITS(regval, start, end) (((regval) & BITS((start),(end))) >> (start))
 
